@@ -24,6 +24,10 @@ MANIFEST
 *.manifest
 *.spec
 
+# Installer and package logs
+pip-log.txt
+pip-delete-this-directory.txt
+
 # Virtual environments and local configuration
 .env
 .env.*
@@ -78,18 +82,19 @@ db.sqlite3-journal
 
 # Tests, coverage, and logs
 .pytest_cache/
+.tox/
+.nox/
 .coverage
 .coverage.*
+.cache/
+.hypothesis/
 htmlcov/
 cover/
 coverage.xml
 nosetests.xml
 *.cover
 *.py.cover
-.tox/
-.nox/
-.cache/
-.hypothesis/
+*.lcov
 *.log
 logs/
 
@@ -105,6 +110,7 @@ logs/
 .DS_Store
 Thumbs.db
 desktop.ini
+tempCodeRunnerFile.py
 
 # Python tooling
 .mypy_cache/
@@ -121,18 +127,20 @@ instance/
 .scrapy/
 local_settings.py
 docs/_build/
+.pybuilder/
 target/
+site/
 .spyderproject
 .spyproject
 .ropeproject
 .abstra/
-.pdm-python
-.pdm-build/
-.pixi/*
-!.pixi/config.toml
-tempCodeRunnerFile.py
 profile_default/
 ipython_config.py
+marimo/_static/
+marimo/_lsp/
+__marimo__/
+
+# Runtime state
 celerybeat-schedule*
 celerybeat.pid
 *.pid
@@ -143,7 +151,11 @@ rabbitmq/
 rabbitmq-data/
 activemq-data/
 *.sage.py
-site/
-marimo/_static/
-marimo/_lsp/
-__marimo__/
+
+# Translations
+*.mo
+*.pot
+
+# Pixi
+.pixi/*
+!.pixi/config.toml
