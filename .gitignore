@@ -1,6 +1,4 @@
-# =============================================================================
-# 1. PYTHON BYTECODE & CACHE
-# =============================================================================
+# Python bytecode and build artifacts
 __pycache__/
 *.py[cod]
 *$py.class
@@ -18,35 +16,37 @@ parts/
 sdist/
 var/
 wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
+*.manifest
+*.spec
 
-# =============================================================================
-# 2. VIRTUAL ENVIRONMENTS
-# =============================================================================
-venv/
-.venv/
-env/
-.env/
-ENV/
-env.bak/
-venv.bak/
-
-# =============================================================================
-# 3. ENVIRONMENT VARIABLES & SECRETS (NEVER COMMIT KEYS!)
-# =============================================================================
+# Virtual environments and local configuration
 .env
 .env.*
 !.env.example
+.envrc
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.pdm-python
+.pdm-build/
+.pixi/
+__pypackages__/
+
+# Secrets
 kaggle.json
 secrets.toml
 .streamlit/secrets.toml
+.pypirc
 
-# =============================================================================
-# 4. LARGE MACHINE LEARNING WEIGHTS & CHECKPOINTS
-# (GitHub rejects files > 100MB; store large .pth models in Google Drive/HuggingFace)
-# =============================================================================
+# Machine learning weights and checkpoints
 *.pt
 *.pth
 *.h5
@@ -58,9 +58,7 @@ checkpoints/
 weights/
 saved_models/
 
-# =============================================================================
-# 5. DATASETS & RAW MEDICAL SCANS
-# =============================================================================
+# Datasets and raw medical scans
 data/
 dataset/
 datasets/
@@ -70,23 +68,36 @@ raw_data/
 *.dcm
 *.dicom
 
-# =============================================================================
-# 6. VECTOR DATABASE & CACHES (ChromaDB / SQLite)
-# =============================================================================
+# Vector databases and local databases
 chroma_db/
 .chroma/
 *.sqlite3
 *.db-journal
+db.sqlite3
+db.sqlite3-journal
 
-# =============================================================================
-# 7. JUPYTER NOTEBOOKS & COLAB RUNTIMES
-# =============================================================================
+# Tests, coverage, and logs
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+cover/
+coverage.xml
+nosetests.xml
+*.cover
+*.py.cover
+.tox/
+.nox/
+.cache/
+.hypothesis/
+*.log
+logs/
+
+# Notebooks
 .ipynb_checkpoints/
 *-checkpoint.ipynb
 
-# =============================================================================
-# 8. IDE & SYSTEM FILES
-# =============================================================================
+# IDE and operating system files
 .vscode/
 .idea/
 *.sublime-project
@@ -95,23 +106,44 @@ chroma_db/
 Thumbs.db
 desktop.ini
 
-# =============================================================================
-# 9. LOGS & TESTING
-# =============================================================================
-*.log
-logs/
-.pytest_cache/
-.coverage
-htmlcov/
-# --- ADDED FOR MEDFUSE-AI (PyTorch & Streamlit) ---
-*.pth
-*.pt
-*.h5
-checkpoints/
-data/
-dataset/
-*.zip
-kaggle.json
-.env
-.streamlit/secrets.toml
-chroma_db/
+# Python tooling
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+cython_debug/
+
+# Framework and tool state
+instance/
+.webassets-cache/
+.scrapy/
+local_settings.py
+docs/_build/
+target/
+.spyderproject
+.spyproject
+.ropeproject
+.abstra/
+.pdm-python
+.pdm-build/
+.pixi/*
+!.pixi/config.toml
+tempCodeRunnerFile.py
+profile_default/
+ipython_config.py
+celerybeat-schedule*
+celerybeat.pid
+*.pid
+*.rdb
+*.aof
+mnesia/
+rabbitmq/
+rabbitmq-data/
+activemq-data/
+*.sage.py
+site/
+marimo/_static/
+marimo/_lsp/
+__marimo__/
