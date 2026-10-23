@@ -19,8 +19,7 @@ if not st.session_state["authenticated"]:
     st.markdown("""
         <div style="text-align: center; margin: 30px 0;">
             <div style="font-size: 3rem;">🩺</div>
-            <h1 style="color: #38BDF8; margin: 0;">MEDFUSE-AI POINT-OF-CARE</h1>
-            <p style="color: #94A3B8;">Karavali Institute of Technology, Mangalore | Dept. of CSE (DS)</p>
+            <h1 style="color: #38BDF8; margin: 0;">CDSS-AI POINT-OF-CARE</h1>
         </div>
     """, unsafe_allow_html=True)
 
