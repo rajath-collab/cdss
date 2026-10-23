@@ -25,10 +25,10 @@ resource-constrained healthcare environments. It is built with Streamlit.
    source .venv/bin/activate
    ```
 
-3. Install the app dependency:
+3. Install dependencies:
 
    ```bash
-   python -m pip install streamlit
+   pip install -r requirements.txt
    ```
 
 4. Start the Streamlit app:
@@ -37,9 +37,16 @@ resource-constrained healthcare environments. It is built with Streamlit.
    streamlit run app.py
    ```
 
-   Streamlit will print the local URL in the terminal (usually
-   `http://localhost:8501`). Open it in a browser to use the app. Stop the
-   server with `Ctrl+C`.
+   Or run via the virtual environment directly:
+   ```powershell
+   .\.venv\Scripts\streamlit.exe run app.py
+   ```
+
+   **In VS Code:**
+   - Press `Ctrl+Shift+B` (or **Terminal > Run Build Task**) to run the Streamlit task.
+   - Or press `F5` (**Run and Debug**) to run with debugging.
+
+   Open `http://127.0.0.1:8501` in your browser. Stop the server with `Ctrl+C`.
 
 ## Demo sign-in
 
