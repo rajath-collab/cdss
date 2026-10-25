@@ -1,16 +1,4 @@
-import fitz  # PyMuPDF - for pathology lab PDFs
-
-def parse_lab_report(pdf_path: str) -> str:
-    """Extract text from pathology PDF lab report"""
-    try:
-        doc = fitz.open(pdf_path)
-        text = ""
-        for page in doc:
-            text += page.get_text()
-        doc.close()
-        return text.strip()
-    except Exception as e:
-        return f"Error parsing PDF: {e}"
+import fitz
 
 def extract_pathology_data(text: str) -> dict:
     """Extract basic pathology info"""
@@ -20,6 +8,14 @@ def extract_pathology_data(text: str) -> dict:
         "word_count": len(text.split()),
         "status": "parsed"
     }
+
+def extract_from_pdf(pdf_path: str) -> dict:
+    """Read PDF and then extract"""
+    doc = fitz.open(pdf_path)
+    text = ""
+    for page in doc:
+        text += page.get_text()
+    return extract_pathology_data(text)
 
 if __name__ == "__main__":
     print("PDF Parser Module - OK")
