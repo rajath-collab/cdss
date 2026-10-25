@@ -11,17 +11,41 @@ resource-constrained healthcare environments. It is built with Streamlit.
 
 ## Run locally
 
-1. Open a terminal in the project directory.
+### Quick Start (Windows PowerShell)
+
+Run directly using the virtual environment's Streamlit executable:
+
+```powershell
+.\.venv\Scripts\streamlit.exe run app.py
+```
+
+Open [http://127.0.0.1:8501](http://127.0.0.1:8501) in your browser.
+
+---
+
+### Step-by-Step Setup
+
+1. Open a terminal in the project directory (`medfuse-ai`).
 2. Create and activate a virtual environment:
 
+   **Windows (PowerShell):**
    ```powershell
+   # If you get a script execution policy error, run this line first:
+   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
    python -m venv .venv
-   .venv\Scripts\Activate.ps1
+   .\.venv\Scripts\Activate.ps1
    ```
 
-   On macOS or Linux, activate it with:
+   **Windows (Command Prompt / CMD):**
+   ```cmd
+   python -m venv .venv
+   .\.venv\Scripts\activate.bat
+   ```
 
+   **macOS / Linux:**
    ```bash
+   python3 -m venv .venv
    source .venv/bin/activate
    ```
 
@@ -33,20 +57,45 @@ resource-constrained healthcare environments. It is built with Streamlit.
 
 4. Start the Streamlit app:
 
-   ```bash
+   ```powershell
    streamlit run app.py
    ```
 
-   Or run via the virtual environment directly:
+   Or directly without activating:
    ```powershell
    .\.venv\Scripts\streamlit.exe run app.py
    ```
 
    **In VS Code:**
-   - Press `Ctrl+Shift+B` (or **Terminal > Run Build Task**) to run the Streamlit task.
-   - Or press `F5` (**Run and Debug**) to run with debugging.
+   - Press `Ctrl+Shift+B` (or **Terminal > Run Build Task**) to run the predefined Streamlit task.
+   - Or press `F5` (**Run and Debug**) to launch with debugging.
 
-   Open `http://127.0.0.1:8501` in your browser. Stop the server with `Ctrl+C`.
+---
+
+### Troubleshooting Common Issues
+
+* **Error: `Port 8501 is not available`**
+  This happens when a previous Streamlit or Python background instance was not cleanly stopped. Run this PowerShell command to terminate the hung process:
+  ```powershell
+  Stop-Process -Id (Get-NetTCPConnection -LocalPort 8501).OwningProcess -Force
+  ```
+  Then restart Streamlit:
+  ```powershell
+  .\.venv\Scripts\streamlit.exe run app.py
+  ```
+
+* **Error: `'streamlit' is not recognized as the name of a cmdlet`**
+  Your virtual environment is not active in the current terminal window. Either activate it first or use the direct path:
+  ```powershell
+  .\.venv\Scripts\streamlit.exe run app.py
+  ```
+
+* **Error: `Activate.ps1 cannot be loaded because running scripts is disabled`**
+  Allow script execution for the current session:
+  ```powershell
+  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+  .\.venv\Scripts\Activate.ps1
+  ```
 
 ## Demo sign-in
 
