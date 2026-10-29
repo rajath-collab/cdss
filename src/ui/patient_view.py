@@ -351,3 +351,4 @@ def render_patient_portal():
                         """, unsafe_allow_html=True)
 
 __all__ = ["render_patient_portal"]
+

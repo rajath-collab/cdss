@@ -217,3 +217,4 @@ def render_admin_portal():
                 st.error(f"🚑 Fast-Track Ambulance & Tele-ICU referral dispatched for {active_case.get('patient_name')} ({selected_cid}) to Bantwal PHC Emergency Ward!")
 
 __all__ = ["render_admin_portal"]
+
