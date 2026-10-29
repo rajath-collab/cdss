@@ -99,3 +99,4 @@ def generate_gradcam_overlay(base_img=None, opacity=0.65, condition="pneumonia")
     return base_resized, out_img
 
 __all__ = ["get_real_sample_xray", "generate_gradcam_overlay"]
+
