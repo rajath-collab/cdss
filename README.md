@@ -1,68 +1,81 @@
-# MedFuse-AI: Multimodal Point-of-Care Clinical Decision Support System (CDSS)
+# MedFuse-AI
 
-Comprehensive Point-of-Care Clinical Triage, Radiography Grad-CAM Explainability, and Remote Tele-ICU Frontend Platform. Built with Streamlit.
+Multimodal Point-of-Care Clinical Decision Support Platform. Built with Streamlit.
 
 ---
 
-## 🌟 Frontend Features Included
+## 🌟 Frontend Modules
 
-- **Module 0: Authentication & Role-Based Access Control (RBAC)**
-  - Dual Mode: Patient, Clinician (MD), and Frontline ASHA worker portals
-  - 1-Click Viva Demo access buttons (`Dr. Ramesh (Doctor)`, `Rajesh (Patient)`, `Sunita (ASHA)`)
-  - Full Sign-In and Registration forms with NMC State Medical Council validation
-  - Inactivity timeout guard and session management
-- **Module 1: Remote Patient & Home Care Portal**
-  - Instant Presets: `Bacterial Pneumonia`, `Normal Baseline`, `Tuberculosis (TB)`
-  - Dual modality ingestion: Chest Radiograph image uploader and Pathology Lab PDF slip uploader
-  - Multimodal fused triage assessment cards (Low, Moderate, Critical)
-  - Emergency Alert cards with 108 Hotline protocols
-  - Vernacular voice synthesis advisory player with multi-language playback
-  - Interactive Patient Laboratory Results Assistant (RAG)
-  - Historical Cases & Verified Doctor E-Prescriptions tab
-- **Module 2: Clinician / Radiologist Diagnostic Console & Audit**
-  - Dynamic KPI cards: Pending Cases, Critical Red Flags, Validated Reports
-  - Emergency Risk Alert notification banner for urgent patients
-  - Multi-case selector dropdown with priority sorting
-  - Dual-column inspection: Vision + Interactive Grad-CAM Heatmap Transparency Overlay slider
-  - Pathology Biomarker structured table & Clinical Diagnostic Q&A Assistant
-  - Official Clinical Prescription text editor with Cryptographic Digital E-Signature & dispatch
-  - 108 Emergency Tele-Referral ambulance dispatch trigger
-- **Module 5: Direct Multimodal Ingestion Sandbox & ASHA Field Mode**
-  - Frontline ASHA worker simplified triage checklists and action plans
-  - Multimodal and standalone diagnostic correlation indicators
-- **Full Vernacular Localization Engine**
-  - Complete translation dictionary supporting: **English, Kannada (ಕನ್ನಡ), Hindi (हिन्दी), Tamil (தமிழ்), Telugu (తెలుగు)**
-- **Statutory Regulatory & Compliance Governance**
-  - AIIMS Clinical AI Standards, ICMR Biomedical AI Guidelines 2023, NMC Act 2019 RMP Directives
-  - DPDP Act 2023 & HIPAA Security Rules zero persistent cloud storage notice
-  - Interactive show/hide notice toggles and comprehensive statutory policy expander
+- **👤 Patient / Home User Portal (`src/ui/patient_view.py`):**
+  - Instant presets: Bacterial Pneumonia, Normal Baseline, Tuberculosis (TB)
+  - Thoracic radiograph uploader & pathology lab slip uploader
+  - Clinical vitals sliders: Fever duration & SpO2 blood oxygen level
+  - Automated multimodal triage assessment (Low, Moderate, Critical)
+  - Emergency 108 action protocols & hotline referral contacts
+  - Multi-language vernacular voice advisory preview
+  - Interactive laboratory results assistant (RAG)
+  - Historical cases & verified doctor prescriptions tracking
+- **👨‍⚕️ Clinician / Radiologist Admin Console (`src/ui/admin_view.py`):**
+  - Certified Medical Practitioner (RMP) session banner
+  - Live KPI metrics cards (Pending Scans, Critical Red Flags, Validated Reports)
+  - Emergency risk notification banner for high-priority patients
+  - Case review queue with priority sorting
+  - Dual-column inspection: Vision with interactive Grad-CAM heatmap transparency overlay slider
+  - Structured pathology biomarker tables & diagnostic assistant
+  - Official prescription text editor with cryptographic digital signing
+  - 108 emergency tele-referral dispatch
+- **💡 Statutory Compliance & Privacy (`app.py`):**
+  - Assistive Technology Notice (AIIMS, ICMR, NMC, SaMD Class B) with toggle
+  - DPDP Act 2023 & HIPAA Security safeguards
 
 ---
 
 ## 🚀 Running the Application
 
-### 1. Launch with PowerShell
+### 1. Launch Directly with PowerShell
 ```powershell
 cd D:\medfuse-ai
 .\.venv\Scripts\streamlit.exe run app.py
 ```
 
-Open your browser at: **[http://127.0.0.1:8501](http://127.0.0.1:8501)**
+Open your browser at: **[http://localhost:8501](http://localhost:8501)**
 
 ---
 
-### 2. Run via Activated Virtual Environment
-```powershell
-cd D:\medfuse-ai
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\.venv\Scripts\Activate.ps1
-streamlit run app.py
+### 2. Run via VS Code
+- **Build Task Shortcut:** Press `Ctrl + Shift + B` (or menu: **Terminal > Run Build Task**).
+- **Run & Debug:** Press `F5` (**Run and Debug**).
+
+---
+
+## 🔑 Demo Sign-In Credentials
+
+### 👤 Patient Portal
+- **Mobile Number:** `9845012345` (or click 1-Click Instant Demo)
+- **Demo OTP:** `123456`
+
+### 👨‍⚕️ Clinician / Radiologist Console
+- **Medical Council Reg No:** `KMC-58291` (Dr. Ramesh Rao)
+- **Doctor Security PIN:** `7788` (or click 1-Click Instant Demo)
+
+---
+
+## 📁 Project Structure
+
+```text
+medfuse-ai/
+├── app.py                     # Main application entry point & authentication router
+├── requirements.txt           # Frontend dependencies
+├── README.md                  # Project documentation & run guide
+├── .streamlit/
+│   └── config.toml            # Medical theme & server configuration
+└── src/
+    ├── config.py              # Session state & doctor database
+    ├── rag/                   # RAG module
+    ├── security/              # Security module
+    ├── ui/                    # Complete Frontend User Interfaces
+    │   ├── styles.py          # Custom CSS design system
+    │   ├── patient_view.py    # Remote patient home care view
+    │   └── admin_view.py      # Clinician / radiologist triage console
+    └── vision/                # Vision deep learning module
 ```
-
----
-
-### 3. Run in VS Code (One-Click)
-- **Run Build Task:** Press `Ctrl + Shift + B`
-- **Run and Debug:** Press `F5`
-
----
