@@ -1,5 +1,5 @@
 # Multimodal Fused Clinical Decision Support System (CDSS)
-**MedFuse-AI | Dept. of CSE (Data Science), KIT, Mangalore | VTU 5th Sem Mini Project**
+
 
 An explainable, multimodal point-of-care artificial intelligence platform engineered to augment clinical triage in resource-constrained healthcare environments (Primary Health Centres, Tele-ICU networks, and rural ASHA frontline workers).
 
