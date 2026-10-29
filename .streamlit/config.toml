@@ -1,7 +1,19 @@
+# Streamlit Security & Server Configuration
+# Enforces XSRF protection, disables CORS exposure, and telemetry
+
 [server]
-headless = true
-address = "127.0.0.1"
 port = 8501
+headless = true
+enableXsrfProtection = true
+enableCORS = false
+maxUploadSize = 25
 
 [browser]
 gatherUsageStats = false
+
+[theme]
+primaryColor = "#0284c7"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f8fafc"
+textColor = "#0f172a"
+font = "sans serif"
