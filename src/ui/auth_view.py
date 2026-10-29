@@ -127,3 +127,4 @@ def render_auth_page():
                     st.rerun()
 
 __all__ = ["render_auth_page"]
+

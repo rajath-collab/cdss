@@ -2,35 +2,12 @@
 Module 1: Remote Patient & Home Care View
 MedFuse-AI - Multimodal Clinical Decision Support System (CDSS)
 Complete Frontend Implementation (Point-of-Care & Tele-ICU)
+Uses real clinical chest radiographs (pneumonia-232.jpg) with interactive multimodal triage.
 """
 import streamlit as st
 import time
-from PIL import Image, ImageDraw, ImageEnhance
-import numpy as np
-import io
-
-def generate_synthetic_xray(condition="normal"):
-    """Generates a realistic clinical radiograph visualization for frontend demonstration."""
-    img = Image.new("RGB", (320, 320), color=(15, 18, 26))
-    draw = ImageDraw.Draw(img)
-    # Rib cage and lung field outline
-    draw.ellipse([50, 40, 140, 260], fill=(40, 48, 62), outline=(100, 116, 139), width=2)
-    draw.ellipse([180, 40, 270, 260], fill=(40, 48, 62), outline=(100, 116, 139), width=2)
-    # Spine/mediastinum
-    draw.rectangle([145, 30, 175, 270], fill=(85, 95, 115))
-    # Clavicles
-    draw.line([(40, 50), (145, 70)], fill=(130, 140, 160), width=4)
-    draw.line([(280, 50), (175, 70)], fill=(130, 140, 160), width=4)
-    
-    if condition == "pneumonia":
-        # Right lower lobe consolidation opacity
-        draw.ellipse([60, 170, 135, 245], fill=(185, 195, 215))
-    elif condition == "tb":
-        # Apical cavitary lesion
-        draw.ellipse([70, 55, 120, 105], fill=(195, 205, 220), outline=(240, 240, 255), width=2)
-        draw.ellipse([85, 70, 105, 90], fill=(25, 30, 42)) # Cavity
-        
-    return img
+from PIL import Image
+from src.ui.image_utils import get_real_sample_xray
 
 def render_patient_portal():
     """Renders the comprehensive home care and patient result tracking dashboard."""
@@ -68,16 +45,10 @@ def render_patient_portal():
         clear_inputs = col_p4.button("✕ Clear Inputs", use_container_width=True)
 
         if "pat_scan_state" not in st.session_state:
-            st.session_state.pat_scan_state = None
-
-        if clear_inputs:
-            st.session_state.pat_scan_state = None
-            st.rerun()
-
-        if use_pneumonia:
+            # Default to real pneumonia radiograph (pneumonia-232.jpg)
             st.session_state.pat_scan_state = {
                 "preset": "pneumonia",
-                "xray": generate_synthetic_xray("pneumonia"),
+                "xray": get_real_sample_xray("pneumonia"),
                 "fever": 4,
                 "spo2": 89,
                 "lab_name": "patient_001_bacterial_pneumonia.pdf",
@@ -87,12 +58,32 @@ def render_patient_portal():
                 "severity": "CRITICAL RISK - PRIORITY 1",
                 "etiology": "Acute Bacterial Pulmonary Consolidation with High Inflammatory Biomarkers"
             }
-            st.toast("Loaded Bacterial Pneumonia Clinical Preset!", icon="⚠️")
+
+        if clear_inputs:
+            st.session_state.pat_scan_state = None
+            st.session_state["show_triage_results"] = False
+            st.rerun()
+
+        if use_pneumonia:
+            st.session_state.pat_scan_state = {
+                "preset": "pneumonia",
+                "xray": get_real_sample_xray("pneumonia"),
+                "fever": 4,
+                "spo2": 89,
+                "lab_name": "patient_001_bacterial_pneumonia.pdf",
+                "biomarkers": {"WBC": "14,200 /µL (Elevated)", "CRP": "48.0 mg/L (Critically High)", "ESR": "38 mm/hr (Elevated)"},
+                "pred_class": "Pneumonia / Consolidation",
+                "conf": 92.4,
+                "severity": "CRITICAL RISK - PRIORITY 1",
+                "etiology": "Acute Bacterial Pulmonary Consolidation with High Inflammatory Biomarkers"
+            }
+            st.session_state["show_triage_results"] = True
+            st.toast("Loaded Real Bacterial Pneumonia Radiograph (pneumonia-232.jpg)!", icon="⚠️")
 
         if use_normal:
             st.session_state.pat_scan_state = {
                 "preset": "normal",
-                "xray": generate_synthetic_xray("normal"),
+                "xray": get_real_sample_xray("normal"),
                 "fever": 0,
                 "spo2": 98,
                 "lab_name": "patient_002_normal.pdf",
@@ -102,12 +93,13 @@ def render_patient_portal():
                 "severity": "LOW RISK - ROUTINE BASELINE",
                 "etiology": "Clear Lung Parenchyma with Physiological Lab Biomarkers"
             }
-            st.toast("Loaded Normal Baseline Clinical Preset!", icon="✅")
+            st.session_state["show_triage_results"] = True
+            st.toast("Loaded Real Normal Baseline Radiograph!", icon="✅")
 
         if use_tb:
             st.session_state.pat_scan_state = {
                 "preset": "tb",
-                "xray": generate_synthetic_xray("tb"),
+                "xray": get_real_sample_xray("tb"),
                 "fever": 12,
                 "spo2": 93,
                 "lab_name": "patient_003_tuberculosis.pdf",
@@ -117,7 +109,8 @@ def render_patient_portal():
                 "severity": "CRITICAL RISK - PRIORITY 1",
                 "etiology": "Apical Cavitary Infiltration Consistent with Tuberculosis"
             }
-            st.toast("Loaded Tuberculosis (TB) Preset!", icon="🚨")
+            st.session_state["show_triage_results"] = True
+            st.toast("Loaded Real Tuberculosis (TB) Radiograph!", icon="🚨")
 
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
         col_up1, col_up2 = st.columns(2)
@@ -141,7 +134,7 @@ def render_patient_portal():
                 }
 
             if st.session_state.pat_scan_state and st.session_state.pat_scan_state.get("xray"):
-                st.image(st.session_state.pat_scan_state["xray"], caption="Active Thoracic Radiograph", width=290)
+                st.image(st.session_state.pat_scan_state["xray"], caption="Active Thoracic Radiograph (Real Clinical Scan)", width=290)
             else:
                 st.info("ℹ️ Upload a chest X-ray or click a preset above to load an imaging sample.")
 
@@ -169,7 +162,7 @@ def render_patient_portal():
                 st.warning("Please upload an X-ray or choose one of the quick presets above.")
             else:
                 with st.spinner("Analyzing thoracic vision features & laboratory biomarkers..."):
-                    time.sleep(1.0)
+                    time.sleep(0.8)
                 st.session_state["show_triage_results"] = True
 
         # Render Active Triage Results
@@ -351,4 +344,3 @@ def render_patient_portal():
                         """, unsafe_allow_html=True)
 
 __all__ = ["render_patient_portal"]
-

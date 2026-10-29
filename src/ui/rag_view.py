@@ -107,3 +107,4 @@ def render_rag_window(user_persona: str = "clinician"):
         st.dataframe(df_g, use_container_width=True, hide_index=True)
 
 __all__ = ["render_rag_window"]
+

@@ -2,61 +2,12 @@
 Module 2: Clinician / Radiologist Admin Triage Console
 MedFuse-AI - Multimodal Clinical Decision Support System (CDSS)
 Complete Frontend Implementation (Explainable AI & E-Signatures)
+Uses real clinical chest radiographs (pneumonia-232.jpg) with interactive Grad-CAM heatmap blending.
 """
 import streamlit as st
 import pandas as pd
-from PIL import Image, ImageDraw, ImageEnhance
-import numpy as np
-
-def generate_gradcam_overlay(opacity=0.65, condition="pneumonia"):
-    """
-    Generates a realistic clinical radiograph blended with a Grad-CAM saliency heatmap
-    for frontend explainability inspection.
-    """
-    # 1. Base radiograph
-    base = Image.new("RGB", (360, 360), color=(15, 18, 26))
-    draw = ImageDraw.Draw(base)
-    draw.ellipse([60, 50, 160, 290], fill=(42, 50, 65), outline=(100, 116, 139), width=2)
-    draw.ellipse([200, 50, 300, 290], fill=(42, 50, 65), outline=(100, 116, 139), width=2)
-    draw.rectangle([165, 40, 195, 300], fill=(85, 95, 115))
-    draw.line([(50, 60), (165, 80)], fill=(130, 140, 160), width=4)
-    draw.line([(310, 60), (195, 80)], fill=(130, 140, 160), width=4)
-    draw.ellipse([70, 180, 155, 275], fill=(185, 195, 215)) # Consolidation
-
-    # 2. Synthetic Thermal Heatmap (Red/Yellow hotspot on right lower lobe)
-    base_np = np.array(base, dtype=np.float32)
-    h, w, _ = base_np.shape
-    y, x = np.ogrid[:h, :w]
-    
-    # Focus point on the lower lobe consolidation
-    cy, cx = 225, 115
-    dist_sq = (x - cx)**2 + (y - cy)**2
-    sigma = 35.0
-    heatmap_norm = np.exp(-dist_sq / (2 * sigma**2))
-    
-    # False-color map (Jet style: Red > Yellow > Green > Blue)
-    heat_rgb = np.zeros((h, w, 3), dtype=np.float32)
-    heat_rgb[..., 0] = np.clip(heatmap_norm * 255 * 1.5, 0, 255) # Red
-    heat_rgb[..., 1] = np.clip((1 - np.abs(heatmap_norm - 0.5) * 2) * 255, 0, 255) # Green/Yellow
-    heat_rgb[..., 2] = np.clip((1 - heatmap_norm) * 180, 0, 255) # Blue background
-    
-    # Alpha blend
-    blended = (heat_rgb * opacity) + (base_np * (1.0 - opacity))
-    blended = np.clip(blended, 0, 255).astype(np.uint8)
-    
-    # Draw Legend Card in corner
-    img_blended = Image.fromarray(blended)
-    draw_b = ImageDraw.Draw(img_blended)
-    draw_b.rectangle([210, 12, 348, 85], fill=(10, 14, 22), outline=(148, 163, 184))
-    draw_b.text((220, 16), "GRAD-CAM SALIENCY", fill=(255, 255, 255))
-    draw_b.rectangle([220, 36, 230, 46], fill=(239, 68, 68))
-    draw_b.text((236, 34), "High Activations", fill=(226, 232, 240))
-    draw_b.rectangle([220, 52, 230, 62], fill=(234, 179, 8))
-    draw_b.text((236, 50), "Moderate Focus", fill=(226, 232, 240))
-    draw_b.rectangle([220, 68, 230, 78], fill=(59, 130, 246))
-    draw_b.text((236, 66), "Clear Parenchyma", fill=(226, 232, 240))
-
-    return base, img_blended
+from PIL import Image
+from src.ui.image_utils import get_real_sample_xray, generate_gradcam_overlay
 
 def render_admin_portal():
     """Renders the Clinician Console with Grad-CAM inspection, RAG biomarkers, and e-signatures."""
@@ -145,20 +96,23 @@ def render_admin_portal():
         </div>
     """, unsafe_allow_html=True)
 
-    # Dual Column Inspection: Grad-CAM vs Biomarkers
+    # Dual Column Inspection: Real Radiograph + Grad-CAM vs Biomarkers
     col_vis, col_rag = st.columns(2)
 
     with col_vis:
         st.markdown("#### 🔬 Radiography Vision & Grad-CAM Saliency")
         opacity = st.slider("Grad-CAM Heatmap Transparency Overlay:", 0.0, 1.0, 0.65, step=0.05, key="admin_cam_slider")
-        st.caption(f"ResNet-50 Layer 4 Saliency map blended at {int(opacity*100)}% opacity.")
+        st.caption(f"ResNet-50 Layer 4 Saliency map blended at {int(opacity*100)}% opacity over real radiograph.")
 
-        raw_xray, overlay_xray = generate_gradcam_overlay(opacity=opacity)
+        case_finding = active_case.get("xray_finding", "pneumonia").lower()
+        real_xray_img = get_real_sample_xray(condition=case_finding)
+        raw_xray, overlay_xray = generate_gradcam_overlay(base_img=real_xray_img, opacity=opacity, condition=case_finding)
+
         tab_overlay, tab_raw = st.tabs(["Grad-CAM Saliency Overlay", "Original Radiograph"])
         with tab_overlay:
             st.image(overlay_xray, caption=f"Predicted: {active_case.get('xray_finding')} ({active_case.get('xray_confidence', 92.4):.1f}% Confidence)", use_container_width=True)
         with tab_raw:
-            st.image(raw_xray, caption="Raw Thoracic Radiograph", use_container_width=True)
+            st.image(raw_xray, caption="Raw Thoracic Radiograph (Real Clinical Scan)", use_container_width=True)
 
     with col_rag:
         st.markdown("#### 🧪 Pathology Biomarker Extraction & Analysis")
@@ -202,7 +156,7 @@ def render_admin_portal():
                 "status": "reviewed",
                 "doctor_name": user_id,
                 "doctor_reg": "KMC-58291",
-                "reviewed_at": "2026-10-29 23:45:00",
+                "reviewed_at": "2026-10-30 00:05:00",
                 "prescription": doctor_notes,
                 "doctor_notes": doctor_notes
             }
@@ -217,4 +171,3 @@ def render_admin_portal():
                 st.error(f"🚑 Fast-Track Ambulance & Tele-ICU referral dispatched for {active_case.get('patient_name')} ({selected_cid}) to Bantwal PHC Emergency Ward!")
 
 __all__ = ["render_admin_portal"]
-
