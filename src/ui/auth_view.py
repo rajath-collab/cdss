@@ -404,21 +404,19 @@ def render_auth_page():
         # 2. COMPREHENSIVE SIGN UP TAB (WITH GPS & STRICT VALIDATIONS)
         # -----------------------------------------------------------------
         with tab_signup:
-            st.markdown(f"##### {t.get('signup_title', 'Create a New Clinical or Patient Account')}")
+            st.markdown(f"##### {t.get('signup_title', 'Create a New Patient / Citizen Account')}")
 
-            role_options = {
-                "patient": t.get("signup_role_patient", "👤 Patient / Citizen"),
-                "doctor": t.get("signup_role_doctor", "👨‍⚕️ Medical Doctor (Certified RMP)"),
-                "asha": t.get("signup_role_asha", "🤝 ASHA / Frontline Health Worker")
-            }
-
-            role_key = st.selectbox(
-                t.get("signup_role_label", "Select User Role:"),
-                list(role_options.keys()),
-                format_func=lambda k: role_options[k],
-                key="signup_role_select"
-            )
-            role_choice = "Doctor" if role_key == "doctor" else ("ASHA" if role_key == "asha" else "Patient")
+            # Institutional Governance Notice Card (NMC & Hospital Security Mandate)
+            st.markdown(f"""
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-left: 5px solid #0284c7; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+                    <div style="font-weight: 700; color: #0369a1; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+                        <span>🔒</span> {t.get('signup_staff_notice_title', 'Public Registration: Patient & Citizen Health Records Only')}
+                    </div>
+                    <div style="font-size: 0.8rem; color: #475569; margin-top: 4px; line-height: 1.45;">
+                        {t.get('signup_staff_notice_desc', 'Notice for Clinicians & Hospital Staff: Certified Medical Practitioner (RMP) and Hospital Administrator accounts are provisioned exclusively by the Hospital Medical Directorate. Self-registration for clinical staff is disabled per National Medical Commission (NMC) security mandates.')}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
 
             # ---------------- Personal & Contact Details ----------------
             st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 10px; margin-bottom: 4px;'>{t.get('signup_personal_sec', 'Personal & Contact Information')}</div>", unsafe_allow_html=True)
@@ -460,94 +458,25 @@ def render_auth_page():
                     key="signup_gender_input"
                 )
 
-            # ---------------- Role-Specific Information ----------------
-            doc_reg_val = None
-            doc_spec_val = None
-            hosp_val = None
-            doc_exp_val = None
-            patient_blood_group = None
-            patient_emg_name = None
-            patient_emg_phone = None
-            asha_id_val = None
+            # ---------------- Patient Demographics & Health Profile ----------------
+            st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>{t.get('signup_patient_sec', 'Patient Clinical Demographics')}</div>", unsafe_allow_html=True)
+            blood_options = ["Unknown / Not Tested", "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]
+            blood_labels = {
+                "Unknown / Not Tested": t.get("blood_unknown", "Unknown / Not Tested"),
+                "A+": "A+", "A-": "A-", "B+": "B+", "B-": "B-", "O+": "O+", "O-": "O-", "AB+": "AB+", "AB-": "AB-"
+            }
+            patient_blood_group = st.selectbox(
+                t.get("signup_blood_group_label", "Blood Group:"),
+                blood_options,
+                format_func=lambda k: blood_labels.get(k, k),
+                key="signup_blood_group"
+            )
 
-            if "Doctor" in role_choice:
-                st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>{t.get('signup_doc_sec', 'Doctor Medical Council Credentials')}</div>", unsafe_allow_html=True)
-                doc_reg_val = st.text_input(
-                    t.get("signup_doc_reg_label", "State Medical Council / NMC Registration Number:"),
-                    placeholder="e.g. KMC-58291, MMC-41209, or NMC-2024-1234",
-                    key="signup_doc_reg"
-                ).strip()
-
-                col_spec, col_exp = st.columns([1.5, 1])
-                with col_spec:
-                    spec_options = [
-                        "Pulmonology & Critical Care",
-                        "Thoracic Radiology",
-                        "General Medicine / Internal Medicine",
-                        "Emergency & Trauma Medicine",
-                        "Cardiology & Tele-ICU",
-                        "Pediatric Pulmonology",
-                        "Other Medical Specialization"
-                    ]
-                    spec_labels = {
-                        "Pulmonology & Critical Care": t.get("spec_pulm", "Pulmonology & Critical Care"),
-                        "Thoracic Radiology": t.get("spec_rad", "Thoracic Radiology"),
-                        "General Medicine / Internal Medicine": t.get("spec_gen_med", "General Medicine / Internal Medicine"),
-                        "Emergency & Trauma Medicine": t.get("spec_emg", "Emergency & Trauma Medicine"),
-                        "Cardiology & Tele-ICU": t.get("spec_cardio", "Cardiology & Tele-ICU"),
-                        "Pediatric Pulmonology": t.get("spec_ped", "Pediatric Pulmonology"),
-                        "Other Medical Specialization": t.get("spec_other", "Other Medical Specialization")
-                    }
-                    doc_spec_val = st.selectbox(
-                        t.get("signup_doc_spec_label", "Clinical Specialization:"),
-                        spec_options,
-                        format_func=lambda k: spec_labels.get(k, k),
-                        key="signup_doc_spec"
-                    )
-                with col_exp:
-                    doc_exp_val = st.number_input(t.get("signup_doc_exp_label", "Experience (Years):"), min_value=0, max_value=60, value=8, step=1, key="signup_doc_exp")
-
-                hosp_val = st.text_input(
-                    t.get("signup_doc_hosp_label", "Hospital / Clinical Tele-ICU Center:"),
-                    placeholder="e.g. Bantwal District Hospital",
-                    value="Bantwal District Hospital",
-                    key="signup_doc_hosp"
-                ).strip()
-
-            elif "Patient" in role_choice:
-                st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>{t.get('signup_patient_sec', 'Patient Clinical Demographics')}</div>", unsafe_allow_html=True)
-                blood_options = ["Unknown / Not Tested", "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]
-                blood_labels = {
-                    "Unknown / Not Tested": t.get("blood_unknown", "Unknown / Not Tested"),
-                    "A+": "A+", "A-": "A-", "B+": "B+", "B-": "B-", "O+": "O+", "O-": "O-", "AB+": "AB+", "AB-": "AB-"
-                }
-                patient_blood_group = st.selectbox(
-                    t.get("signup_blood_group_label", "Blood Group:"),
-                    blood_options,
-                    format_func=lambda k: blood_labels.get(k, k),
-                    key="signup_blood_group"
-                )
-
-                col_emg1, col_emg2 = st.columns(2)
-                with col_emg1:
-                    patient_emg_name = st.text_input(t.get("signup_emg_name_label", "Emergency Contact Person:"), placeholder=t.get("placeholder_emg_name", "e.g. Suresh Kumar (Brother)"), key="signup_emg_name").strip()
-                with col_emg2:
-                    patient_emg_phone = st.text_input(t.get("signup_emg_phone_label", "Emergency Contact Mobile:"), placeholder="e.g. 9448199999", key="signup_emg_phone").strip()
-
-            elif "ASHA" in role_choice:
-                st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>{t.get('signup_asha_sec', 'ASHA Field Identification')}</div>", unsafe_allow_html=True)
-                asha_id_val = st.text_input(
-                    t.get("signup_asha_id_label", "ASHA Worker ID / Sub-Center Code:"),
-                    placeholder="e.g. ASHA-DK-409",
-                    key="signup_asha_id"
-                ).strip()
-
-                hosp_val = st.text_input(
-                    t.get("signup_asha_phc_label", "Primary Health Centre (PHC) Sub-Center:"),
-                    placeholder="e.g. Panemangalore PHC Sub-Center",
-                    value="Panemangalore PHC Sub-Center",
-                    key="signup_asha_hosp"
-                ).strip()
+            col_emg1, col_emg2 = st.columns(2)
+            with col_emg1:
+                patient_emg_name = st.text_input(t.get("signup_emg_name_label", "Emergency Contact Person:"), placeholder=t.get("placeholder_emg_name", "e.g. Suresh Kumar (Brother)"), key="signup_emg_name").strip()
+            with col_emg2:
+                patient_emg_phone = st.text_input(t.get("signup_emg_phone_label", "Emergency Contact Mobile:"), placeholder="e.g. 9448199999", key="signup_emg_phone").strip()
 
             # ---------------- Location & Geolocation Section ----------------
             st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>{t.get('signup_addr_sec', 'Address & Location (GPS Auto-Detection or Manual)')}</div>", unsafe_allow_html=True)
@@ -653,21 +582,12 @@ def render_auth_page():
                         st.error(f"⚠️ Postal Pincode Error: {pin_err}")
                         st.stop()
 
-                # 5. Role-specific validations
+                # 5. Role is strictly 'patient' for public self-registration
                 role_code = "patient"
-                if "Doctor" in role_choice:
-                    role_code = "doctor"
-                    valid_reg, reg_err, cleaned_reg = validate_doctor_reg(doc_reg_val)
-                    if not valid_reg:
-                        st.error(f"⚠️ Medical Council Registration Error: {reg_err}")
-                        st.stop()
-                    doc_reg_val = cleaned_reg
-                elif "ASHA" in role_choice:
-                    role_code = "asha"
-                    if not asha_id_val or len(asha_id_val) < 3:
-                        st.error("⚠️ ASHA Worker ID is required (minimum 3 characters).")
-                        st.stop()
-                    doc_reg_val = asha_id_val.upper()
+                doc_reg_val = None
+                hosp_val = None
+                doc_spec_val = None
+                doc_exp_val = None
 
                 # 6. Password Strength and Confirm Password Matching
                 valid_pw, pw_err = validate_password(new_pw, confirm_pw)
@@ -676,17 +596,10 @@ def render_auth_page():
                     st.stop()
 
                 # ================= DATABASE INSERTION =================
-                # Generate unique clean username
+                # Generate unique clean patient username
                 clean_name_parts = [p.lower() for p in new_name.split() if p.isalpha()]
                 first_name_str = clean_name_parts[0] if clean_name_parts else "user"
-                if role_code == "doctor":
-                    username_candidate = f"dr.{first_name_str}_{cleaned_phone[-4:]}"
-                elif role_code == "admin":
-                    username_candidate = f"admin.{first_name_str}_{cleaned_phone[-4:]}"
-                elif role_code == "asha":
-                    username_candidate = f"asha.{first_name_str}_{cleaned_phone[-4:]}"
-                else:
-                    username_candidate = f"patient.{first_name_str}_{cleaned_phone[-4:]}"
+                username_candidate = f"patient.{first_name_str}_{cleaned_phone[-4:]}"
 
                 success, msg, created_user_record = create_user(
                     username=username_candidate,
@@ -719,14 +632,7 @@ def render_auth_page():
                     st.session_state["current_user"] = created_user_record
                     st.session_state["user_role"] = role_code
 
-                    if role_code == "doctor":
-                        disp = f"{new_name} ({doc_reg_val})"
-                    elif role_code == "admin":
-                        disp = f"{new_name} (Hospital Administrator)"
-                    elif role_code == "asha":
-                        disp = f"{new_name} ({doc_reg_val})"
-                    else:
-                        disp = f"{new_name} (+91 {cleaned_phone})"
+                    disp = f"{new_name} (+91 {cleaned_phone})"
 
                     st.session_state["user_id"] = disp
                     st.session_state["last_activity"] = time.time()
