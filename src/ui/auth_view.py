@@ -87,10 +87,9 @@ def render_auth_page():
             </div>
         """, unsafe_allow_html=True)
 
-        tab_signin, tab_signup, tab_security_audit = st.tabs([
+        tab_signin, tab_signup = st.tabs([
             "🔑 Sign In",
-            "📝 Sign Up (Create Account)",
-            "🛡️ Security & Audit Trail"
+            "📝 Sign Up (Create Account)"
         ])
 
         # -----------------------------------------------------------------
@@ -267,8 +266,57 @@ def render_auth_page():
                             st.rerun()
 
                 # ---------------------------------------------------------
-                # NON-DOCTOR CHALLENGE: Only asks for Password
-                # (Patients/public users never see doctor council fields)
+                # ADMIN CHALLENGE: Hospital Administrator Master Password
+                # ---------------------------------------------------------
+                elif user_role == "admin":
+                    st.markdown("##### Hospital Administrator Authentication")
+                    st.caption("Administrator credentials are required to manage hospital staff, patient master records, and clinical systems.")
+
+                    admin_password = st.text_input(
+                        "Administrator Password:",
+                        type="password",
+                        placeholder="Enter administrator password",
+                        key="login_step2_admin_password"
+                    )
+
+                    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+                    col_s2_submit, col_s2_back = st.columns([1.5, 1])
+
+                    with col_s2_submit:
+                        if st.button("🔐 Verify & Enter Admin Portal", type="primary", use_container_width=True, key="btn_login_step2_admin"):
+                            if not admin_password:
+                                st.error("⚠️ Please enter administrator password.")
+                            else:
+                                is_locked, lock_msg = is_account_locked(user)
+                                if is_locked:
+                                    st.error(lock_msg)
+                                elif not verify_password(admin_password, user["password_hash"]):
+                                    attempts, locked_now, msg = record_login_attempt(user["username"], is_success=False)
+                                    if locked_now:
+                                        st.error(msg)
+                                    else:
+                                        st.error(f"❌ Incorrect administrator password. Failed attempt {attempts} of 5.")
+                                else:
+                                    record_login_attempt(user["username"], is_success=True)
+                                    st.session_state["authenticated"] = True
+                                    st.session_state["current_user"] = user
+                                    st.session_state["user_role"] = "admin"
+                                    st.session_state["user_id"] = f"{user['full_name']} (Medical Superintendent)"
+                                    st.session_state["last_activity"] = time.time()
+                                    st.session_state["auth_login_step"] = 1
+                                    st.session_state["auth_target_user"] = None
+                                    st.toast(f"Welcome, {user['full_name']}! System governance portal unlocked.", icon="✅")
+                                    st.rerun()
+
+                    with col_s2_back:
+                        if st.button("← Change Account", use_container_width=True, key="btn_login_back_admin"):
+                            st.session_state["auth_login_step"] = 1
+                            st.session_state["auth_target_user"] = None
+                            st.rerun()
+
+                # ---------------------------------------------------------
+                # NON-DOCTOR / NON-ADMIN CHALLENGE: Only asks for Password
+                # (Patients/public users never see doctor council or admin fields)
                 # ---------------------------------------------------------
                 else:
                     portal_label = "Frontline Field Console" if user_role == "asha" else "Patient Portal"
@@ -338,6 +386,7 @@ def render_auth_page():
                 [
                     "👤 Patient / Citizen",
                     "👨‍⚕️ Medical Doctor (Certified RMP)",
+                    "🏥 Hospital Administrator / Clinical Lead",
                     "🤝 ASHA / Frontline Health Worker"
                 ],
                 key="signup_role_select"
@@ -414,6 +463,23 @@ def render_auth_page():
                     value="Bantwal District Hospital",
                     key="signup_doc_hosp"
                 ).strip()
+
+            elif "Administrator" in role_choice:
+                st.markdown("<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>Hospital Administration Credentials</div>", unsafe_allow_html=True)
+                doc_reg_val = st.text_input(
+                    "Administrator / Employee ID:",
+                    placeholder="e.g. HOSP-ADMIN-01",
+                    value="HOSP-ADMIN-01",
+                    key="signup_admin_id"
+                ).strip()
+
+                hosp_val = st.text_input(
+                    "Hospital / Health Directorate Facility:",
+                    placeholder="e.g. Bantwal District Hospital",
+                    value="Bantwal District Hospital",
+                    key="signup_admin_hosp"
+                ).strip()
+                doc_spec_val = "Hospital Administration & Governance"
 
             elif "Patient" in role_choice:
                 st.markdown("<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>Patient Clinical Demographics</div>", unsafe_allow_html=True)
@@ -553,6 +619,10 @@ def render_auth_page():
                         st.error(f"⚠️ Medical Council Registration Error: {reg_err}")
                         st.stop()
                     doc_reg_val = cleaned_reg
+                elif "Administrator" in role_choice:
+                    role_code = "admin"
+                    if not doc_reg_val:
+                        doc_reg_val = f"ADMIN-{cleaned_phone[-4:]}"
                 elif "ASHA" in role_choice:
                     role_code = "asha"
                     if not asha_id_val or len(asha_id_val) < 3:
@@ -572,6 +642,8 @@ def render_auth_page():
                 first_name_str = clean_name_parts[0] if clean_name_parts else "user"
                 if role_code == "doctor":
                     username_candidate = f"dr.{first_name_str}_{cleaned_phone[-4:]}"
+                elif role_code == "admin":
+                    username_candidate = f"admin.{first_name_str}_{cleaned_phone[-4:]}"
                 elif role_code == "asha":
                     username_candidate = f"asha.{first_name_str}_{cleaned_phone[-4:]}"
                 else:
@@ -610,6 +682,8 @@ def render_auth_page():
 
                     if role_code == "doctor":
                         disp = f"{new_name} ({doc_reg_val})"
+                    elif role_code == "admin":
+                        disp = f"{new_name} (Hospital Administrator)"
                     elif role_code == "asha":
                         disp = f"{new_name} ({doc_reg_val})"
                     else:
@@ -621,43 +695,6 @@ def render_auth_page():
                     st.success(f"🎉 Account successfully created for {new_name}! Username: '{username_candidate}'. Redirecting...")
                     time.sleep(1.0)
                     st.rerun()
-
-        # -----------------------------------------------------------------
-        # 3. SECURITY & AUDIT TRAIL TAB
-        # -----------------------------------------------------------------
-        with tab_security_audit:
-            st.markdown("##### 🛡️ Clinical Security & Authentication Audit Trail")
-            st.caption("Immutable system audit logs recorded in SQLite database:")
-
-            recent_logs = get_audit_logs(limit=12)
-            if recent_logs:
-                for entry in recent_logs:
-                    evt = entry.get("event_type", "EVENT")
-                    badge_color = "#16a34a" if "SUCCESS" in evt or "REGISTER" in evt else ("#dc2626" if "LOCK" in evt or "FAIL" in evt else "#0284c7")
-                    st.markdown(f"""
-                        <div style="background: #f8fafc; border-left: 4px solid {badge_color}; padding: 10px 14px; border-radius: 6px; margin-bottom: 8px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <strong style="color: #0f172a; font-size: 0.88rem;">{evt}</strong>
-                                <span style="font-size: 0.75rem; color: #64748b;">{entry.get('timestamp', '')}</span>
-                            </div>
-                            <div style="font-size: 0.82rem; color: #334155; margin-top: 3px;">
-                                User: <code>{entry.get('username', 'SYSTEM')}</code> • {entry.get('details', '')}
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("No audit logs recorded yet.")
-
-            st.divider()
-            st.markdown("""
-                <div style="font-size: 0.78rem; color: #64748b; line-height: 1.6;">
-                    • <strong>Bcrypt Adaptive Hashing:</strong> Work factor = 12 rounds.<br/>
-                    • <strong>Brute-Force Rate Limiting:</strong> Enforces temporary 15-minute lockouts upon 5 consecutive failed login attempts.<br/>
-                    • <strong>Identity Guardrails:</strong> Full Names validated strictly against alphabetic characters (digits rejected).<br/>
-                    • <strong>Indian Mobile Standard:</strong> Validates 10 digits starting with 6, 7, 8, or 9.<br/>
-                    • <strong>Doctor Gatekeeper:</strong> Certified RMP accounts require Medical Council registration verification.
-                </div>
-            """, unsafe_allow_html=True)
 
 
 __all__ = ["render_auth_page"]

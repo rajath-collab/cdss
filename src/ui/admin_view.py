@@ -6,6 +6,7 @@ Uses real clinical chest radiographs (pneumonia-232.jpg) with interactive Grad-C
 """
 import streamlit as st
 import pandas as pd
+import datetime
 from PIL import Image
 from src.ui.image_utils import get_real_sample_xray, generate_gradcam_overlay
 
@@ -19,7 +20,7 @@ def render_admin_portal():
         <div style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); padding: 22px; border-radius: 12px; color: #ffffff; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                 <div>
-                    <h2 style="margin: 0; color: #818cf8; font-size: 1.6rem;">👨‍⚕️ Clinician Diagnostic Console & Audit</h2>
+                    <h2 style="margin: 0; color: #818cf8; font-size: 1.6rem;">👨‍⚕️ Clinician Diagnostic & Triage Console</h2>
                     <p style="margin: 4px 0 0 0; color: #cbd5e1; font-size: 0.95rem;">
                         Logged in as: <strong>{user_id}</strong> | Hospital: <strong>Bantwal District Hospital / Tele-ICU Center</strong>
                     </p>
@@ -62,6 +63,77 @@ def render_admin_portal():
 
     st.divider()
 
+    # Clinician Patient Ingestion / Data Management Tool
+    with st.expander("➕ Ingest New Patient Case directly to Clinical Triage Queue", expanded=False):
+        st.markdown("##### Register a New Patient Scan & Biomarkers (Instant Point-of-Care Ingestion)")
+        col_cp1, col_cp2 = st.columns(2)
+        with col_cp1:
+            c_p_name = st.text_input("Patient Full Name:", placeholder="e.g. Ramesh Hegde", key="doc_add_p_name").strip()
+            c_p_age = st.number_input("Patient Age:", min_value=1, max_value=110, value=52, key="doc_add_p_age")
+            c_p_gender = st.selectbox("Gender:", ["Male", "Female", "Other"], key="doc_add_p_gen")
+            c_p_phone = st.text_input("Mobile Contact (10 Digits):", placeholder="e.g. 9845012399", key="doc_add_p_phone").strip()
+
+        with col_cp2:
+            c_p_loc = st.text_input("Clinical Location / PHC Ward:", value="Bantwal District Hospital (Emergency Ward)", key="doc_add_p_loc").strip()
+            c_p_finding = st.selectbox(
+                "Diagnostic Finding / Impression:",
+                ["Pneumonia / Consolidation", "Normal Baseline", "Pleural Effusion", "COVID-19 Infiltration", "Tuberculosis Suspect"],
+                key="doc_add_p_finding"
+            )
+            c_p_conf = st.slider("Confidence Score (%):", 70.0, 99.5, 94.2, step=0.1, key="doc_add_p_conf")
+            c_p_crit = st.checkbox("Mark as High-Risk Critical Tele-ICU Priority", value=("Pneumonia" in c_p_finding), key="doc_add_p_crit")
+
+        col_cb1, col_cb2, col_cb3 = st.columns(3)
+        with col_cb1:
+            c_wbc = st.text_input("WBC Count (/µL):", value="13,900", key="doc_add_wbc")
+        with col_cb2:
+            c_crp = st.text_input("CRP Level (mg/L):", value="44.0", key="doc_add_crp")
+        with col_cb3:
+            c_spo2 = st.text_input("SpO2 Saturation (%):", value="90%", key="doc_add_spo2")
+
+        if st.button("🚀 Ingest Patient Case into Live Queue", type="primary", use_container_width=True, key="btn_doc_ingest_p"):
+            if not c_p_name:
+                st.error("⚠️ Patient name is required.")
+            else:
+                new_cid = f"PT-2026-{1000 + len(cases) + 1}"
+                st.session_state.patient_cases[new_cid] = {
+                    "case_id": new_cid,
+                    "patient_username": f"+91 {c_p_phone or '9845000000'}",
+                    "patient_name": c_p_name,
+                    "patient_age": int(c_p_age),
+                    "patient_gender": c_p_gender,
+                    "location": c_p_loc,
+                    "emergency_contact": "+91 94481 99999",
+                    "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "xray_preset": "patient_001_pneumonia" if "Pneumonia" in c_p_finding else "patient_002_normal",
+                    "xray_finding": c_p_finding,
+                    "xray_confidence": float(c_p_conf),
+                    "lab_biomarkers": {
+                        "wbc": {"name": "White Blood Cell Count", "value": c_wbc, "unit": "/µL", "status": "ELEVATED", "normal_range": "4,500 - 11,000 /µL"},
+                        "crp": {"name": "C-Reactive Protein", "value": c_crp, "unit": "mg/L", "status": "CRITICALLY HIGH", "normal_range": "< 5.0 mg/L"},
+                        "spo2": {"name": "Oxygen Saturation (SpO2)", "value": c_spo2, "unit": "%", "status": "LOW" if "8" in c_spo2 or "90" in c_spo2 else "NORMAL", "normal_range": "95 - 100%"}
+                    },
+                    "triage_summary": {
+                        "triage_category": "CRITICAL RISK - PRIORITY 1" if c_p_crit else "ROUTINE BASELINE",
+                        "severity_color": "red" if c_p_crit else "green",
+                        "etiology": f"Acute Presentation of {c_p_finding}",
+                        "clinical_reasoning": f"Doctor ingested point-of-care case: {c_p_finding} with SpO2 at {c_spo2}.",
+                        "recommendation": "Urgent intervention and continuous vital monitoring required." if c_p_crit else "Outpatient care."
+                    },
+                    "is_critical": c_p_crit,
+                    "alert_status": f"🚨 URGENT ACTION ({c_p_finding})" if c_p_crit else f"✅ {c_p_finding}",
+                    "doctor_review": {
+                        "status": "pending_review",
+                        "doctor_name": None,
+                        "doctor_reg": None,
+                        "reviewed_at": None,
+                        "prescription": "",
+                        "doctor_notes": ""
+                    }
+                }
+                st.success(f"🎉 Case `{new_cid}` successfully ingested for {c_p_name}!")
+                st.rerun()
+
     # Case Selector
     case_ids = list(cases.keys())
     def format_case(cid):
@@ -69,7 +141,7 @@ def render_admin_portal():
         flag = "🚨 URGENT" if c.get("is_critical") and c.get("doctor_review", {}).get("status") != "reviewed" else ("✅ Reviewed" if c.get("doctor_review", {}).get("status") == "reviewed" else "⏳ Pending")
         return f"{flag} | {cid} — {c.get('patient_name')} ({c.get('xray_finding')})"
 
-    selected_cid = st.selectbox("🔍 Select Patient Case to Audit & Digitally Sign:", options=case_ids, format_func=format_case)
+    selected_cid = st.selectbox("🔍 Select Patient Case to Review & Prescribe:", options=case_ids, format_func=format_case)
     active_case = cases[selected_cid]
     triage = active_case.get("triage_summary", {})
     doc_rev = active_case.get("doctor_review", {})

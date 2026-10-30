@@ -16,6 +16,7 @@ from src.ui.styles import CUSTOM_CSS
 from src.ui.auth_view import render_auth_page
 from src.ui.patient_view import render_patient_portal
 from src.ui.admin_view import render_admin_portal
+from src.ui.system_admin_view import render_system_admin_portal
 from src.ui.sandbox_view import render_direct_sandbox
 from src.ui.rag_view import render_rag_window
 from src.ui.translations import get_ui_text
@@ -124,7 +125,15 @@ with st.sidebar:
         st.session_state["ui_lang"] = sel_lang
         st.rerun()
 
-    role_badge = t.get("role_doctor", "Clinician MD") if user_role == "doctor" else (t.get("role_asha", "ASHA Lead") if user_role == "asha" else t.get("role_patient", "Remote Patient"))
+    if user_role == "admin":
+        role_badge = "Hospital Superintendent / Admin"
+    elif user_role == "doctor":
+        role_badge = t.get("role_doctor", "Clinician MD")
+    elif user_role == "asha":
+        role_badge = t.get("role_asha", "ASHA Lead")
+    else:
+        role_badge = t.get("role_patient", "Remote Patient")
+
     st.markdown(f"""
     <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
         <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">{t.get('active_session', 'ACTIVE CLINICAL SESSION')}</div>
@@ -140,10 +149,18 @@ with st.sidebar:
 
     st.divider()
 
-    # RBAC Persona Navigation Filter
-    if user_role == "doctor":
+    # RBAC Persona Navigation Filter - Strict Zero Patient Access to Admin or Clinician Consoles
+    if user_role == "admin":
         nav_options = [
-            "👨‍⚕️ Clinician Diagnostic Console & Audit (Module 2)",
+            "🏥 Hospital Clinical Administration & Governance",
+            "👨‍⚕️ Clinician Diagnostic & Triage Console (Module 2)",
+            "🔬 Multimodal Direct Ingestion Sandbox (Module 5)",
+            "💬 Clinical Knowledge & RAG Assistant (Module 4)"
+        ]
+    elif user_role == "doctor":
+        nav_options = [
+            "👨‍⚕️ Clinician Diagnostic & Triage Console (Module 2)",
+            "🏥 Hospital Clinical Administration & Governance",
             "🔬 Multimodal Direct Ingestion Sandbox (Module 5)",
             "💬 Clinical Knowledge & RAG Assistant (Module 4)"
         ]
@@ -181,9 +198,17 @@ with st.sidebar:
 # -------------------------------------------------------------
 # 🎯 COMPONENT ROUTING CONTROLLER
 # -------------------------------------------------------------
-if "Remote Patient" in app_mode:
+if "Hospital Clinical Administration" in app_mode:
+    if user_role not in ["admin", "doctor"]:
+        st.error("⛔ Access Denied: Administrator or Certified Clinician Privileges Required. Patients cannot access hospital governance.")
+        st.stop()
+    render_system_admin_portal()
+elif "Remote Patient" in app_mode:
     render_patient_portal()
-elif "Clinician Diagnostic Console" in app_mode:
+elif "Clinician Diagnostic" in app_mode:
+    if user_role not in ["admin", "doctor"]:
+        st.error("⛔ Access Denied: Certified Medical Practitioner Privileges Required. Patients cannot access clinician diagnostics.")
+        st.stop()
     render_admin_portal()
 elif "Knowledge & RAG" in app_mode:
     render_rag_window(user_persona=user_role)

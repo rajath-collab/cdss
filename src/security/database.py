@@ -205,6 +205,23 @@ def init_db():
                 "city": "Panemangalore",
                 "state": "Karnataka",
                 "pincode": "574231"
+            },
+            {
+                "username": "admin.chief",
+                "password": "admin123",
+                "full_name": "Dr. K. V. Hegde (Medical Superintendent)",
+                "role": "admin",
+                "phone": "9845011222",
+                "reg_number": "KMC-ADMIN-01",
+                "organization": "Bantwal District Hospital / DK Health Directorate",
+                "email": "cmo.bantwal@karnataka.gov.in",
+                "age": 54,
+                "gender": "Male",
+                "city": "Bantwal",
+                "state": "Karnataka",
+                "pincode": "574211",
+                "specialization": "Hospital Administration & Critical Care",
+                "experience_years": 24
             }
         ]
 
@@ -247,6 +264,22 @@ def init_db():
                 VALUES ('SYSTEM', 'DATABASE_INITIALIZED', 'Pre-seeded initial verified clinical accounts with Bcrypt hashing.')
             """)
         else:
+            # Ensure admin.chief account exists
+            cursor.execute("SELECT id FROM users WHERE username = 'admin.chief'")
+            if not cursor.fetchone():
+                admin_pw = hash_password("admin123")
+                cursor.execute("""
+                    INSERT INTO users (
+                        username, password_hash, full_name, role, phone, reg_number, organization,
+                        email, age, gender, address, city, state, pincode, specialization, experience_years
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    "admin.chief", admin_pw, "Dr. K. V. Hegde (Medical Superintendent)", "admin",
+                    "9845011222", "KMC-ADMIN-01", "Bantwal District Hospital / DK Health Directorate",
+                    "cmo.bantwal@karnataka.gov.in", 54, "Male", "Hospital Administrative Complex", "Bantwal",
+                    "Karnataka", "574211", "Hospital Administration & Critical Care", 24
+                ))
+
             # Backfill demographics for pre-seeded accounts if null
             for acc in seed_accounts:
                 cursor.execute("""
