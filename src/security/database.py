@@ -6,12 +6,15 @@ Enforces:
   - Adaptive Bcrypt Password Hashing (12 rounds)
   - Brute-Force Rate Limiting & Account Lockout Guard (5 attempts / 15 mins)
   - Immutable Security & Clinical Access Audit Logging
-  - Multi-Identifier User Lookup (Username, 10-Digit Phone, or Council Reg No)
+  - Multi-Identifier User Verification (Username, 10-Digit Mobile, and Doctor Council Reg)
+  - GPS Geolocation & Demographic Address Persistence
 """
 
 import os
 import sqlite3
 import datetime
+import urllib.request
+import json
 from pathlib import Path
 from contextlib import contextmanager
 from typing import Optional, Dict, Any, Tuple
@@ -61,7 +64,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def init_db():
-    """Creates database tables and pre-seeds verified default clinical accounts."""
+    """Creates database tables, handles column migrations, and pre-seeds verified accounts."""
     with get_db() as conn:
         cursor = conn.cursor()
 
@@ -76,6 +79,19 @@ def init_db():
                 phone TEXT UNIQUE,
                 reg_number TEXT UNIQUE,
                 organization TEXT,
+                email TEXT,
+                age INTEGER,
+                gender TEXT,
+                address TEXT,
+                city TEXT,
+                state TEXT,
+                pincode TEXT,
+                gps_coordinates TEXT,
+                emergency_contact_name TEXT,
+                emergency_contact_phone TEXT,
+                specialization TEXT,
+                experience_years INTEGER,
+                blood_group TEXT,
                 failed_attempts INTEGER DEFAULT 0,
                 locked_until TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -84,6 +100,30 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_reg ON users(reg_number);")
+
+        # Column Migration Guard (Adds newly introduced columns if running on an existing DB)
+        existing_cols = [r["name"] for r in cursor.execute("PRAGMA table_info(users)").fetchall()]
+        new_columns = [
+            ("email", "TEXT"),
+            ("age", "INTEGER"),
+            ("gender", "TEXT"),
+            ("address", "TEXT"),
+            ("city", "TEXT"),
+            ("state", "TEXT"),
+            ("pincode", "TEXT"),
+            ("gps_coordinates", "TEXT"),
+            ("emergency_contact_name", "TEXT"),
+            ("emergency_contact_phone", "TEXT"),
+            ("specialization", "TEXT"),
+            ("experience_years", "INTEGER"),
+            ("blood_group", "TEXT"),
+        ]
+        for col_name, col_type in new_columns:
+            if col_name not in existing_cols:
+                try:
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}")
+                except Exception:
+                    pass
 
         # 2. Authentication Audit Log Table
         cursor.execute("""
@@ -97,53 +137,89 @@ def init_db():
         """)
 
         # 3. Pre-seed Default Verified Accounts if users table is empty
+        seed_accounts = [
+            {
+                "username": "dr.ramesh",
+                "password": "doctor123",
+                "full_name": "Dr. Ramesh Rao, MD",
+                "role": "doctor",
+                "phone": "9845012345",
+                "reg_number": "KMC-58291",
+                "organization": "Bantwal District Hospital / Tele-ICU Center",
+                "email": "dr.ramesh@teleicu.gov.in",
+                "age": 49,
+                "gender": "Male",
+                "city": "Bantwal",
+                "state": "Karnataka",
+                "pincode": "574211",
+                "specialization": "Pulmonology & Critical Care",
+                "experience_years": 18
+            },
+            {
+                "username": "dr.priya",
+                "password": "doctor123",
+                "full_name": "Dr. Priya Shenoy, MD",
+                "role": "doctor",
+                "phone": "9845099999",
+                "reg_number": "KMC-41209",
+                "organization": "Mangalore Central Hospital",
+                "email": "dr.priya@mch.org.in",
+                "age": 42,
+                "gender": "Female",
+                "city": "Mangaluru",
+                "state": "Karnataka",
+                "pincode": "575001",
+                "specialization": "Thoracic Radiology",
+                "experience_years": 14
+            },
+            {
+                "username": "patient.rajesh",
+                "password": "patient123",
+                "full_name": "Rajesh Kumar",
+                "role": "patient",
+                "phone": "9845067890",
+                "reg_number": None,
+                "organization": "Bantwal Rural PHC Zone 2",
+                "email": "rajesh.k@gmail.com",
+                "age": 48,
+                "gender": "Male",
+                "address": "House #44, B.C. Road",
+                "city": "Bantwal",
+                "state": "Karnataka",
+                "pincode": "574211",
+                "blood_group": "B+",
+                "emergency_contact_name": "Suresh Kumar (Brother)",
+                "emergency_contact_phone": "9448199999"
+            },
+            {
+                "username": "asha.sunita",
+                "password": "asha123",
+                "full_name": "Sunita Naik",
+                "role": "asha",
+                "phone": "9741054321",
+                "reg_number": "ASHA-DK-409",
+                "organization": "Panemangalore PHC Sub-Center",
+                "email": "sunita.asha@karnataka.gov.in",
+                "age": 36,
+                "gender": "Female",
+                "city": "Panemangalore",
+                "state": "Karnataka",
+                "pincode": "574231"
+            }
+        ]
+
         cursor.execute("SELECT COUNT(*) as count FROM users")
         row = cursor.fetchone()
         if row["count"] == 0:
-            seed_accounts = [
-                {
-                    "username": "dr.ramesh",
-                    "password": "doctor123",
-                    "full_name": "Dr. Ramesh Rao, MD",
-                    "role": "doctor",
-                    "phone": "9845012345",
-                    "reg_number": "KMC-58291",
-                    "organization": "Bantwal District Hospital / Tele-ICU Center"
-                },
-                {
-                    "username": "dr.priya",
-                    "password": "doctor123",
-                    "full_name": "Dr. Priya Shenoy, MD",
-                    "role": "doctor",
-                    "phone": "9845099999",
-                    "reg_number": "KMC-41209",
-                    "organization": "Mangalore Central Hospital"
-                },
-                {
-                    "username": "patient.rajesh",
-                    "password": "patient123",
-                    "full_name": "Rajesh Kumar",
-                    "role": "patient",
-                    "phone": "9845067890",
-                    "reg_number": None,
-                    "organization": "Bantwal Rural PHC Zone 2"
-                },
-                {
-                    "username": "asha.sunita",
-                    "password": "asha123",
-                    "full_name": "Sunita Naik",
-                    "role": "asha",
-                    "phone": "9741054321",
-                    "reg_number": "ASHA-DK-409",
-                    "organization": "Panemangalore PHC Sub-Center"
-                }
-            ]
-
             for acc in seed_accounts:
                 hashed_pw = hash_password(acc["password"])
                 cursor.execute("""
-                    INSERT INTO users (username, password_hash, full_name, role, phone, reg_number, organization)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO users (
+                        username, password_hash, full_name, role, phone, reg_number, organization,
+                        email, age, gender, address, city, state, pincode, specialization, experience_years,
+                        blood_group, emergency_contact_name, emergency_contact_phone
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     acc["username"],
                     hashed_pw,
@@ -151,13 +227,49 @@ def init_db():
                     acc["role"],
                     acc["phone"],
                     acc["reg_number"],
-                    acc["organization"]
+                    acc["organization"],
+                    acc.get("email"),
+                    acc.get("age"),
+                    acc.get("gender"),
+                    acc.get("address"),
+                    acc.get("city"),
+                    acc.get("state"),
+                    acc.get("pincode"),
+                    acc.get("specialization"),
+                    acc.get("experience_years"),
+                    acc.get("blood_group"),
+                    acc.get("emergency_contact_name"),
+                    acc.get("emergency_contact_phone")
                 ))
             
             cursor.execute("""
                 INSERT INTO auth_audit_log (username, event_type, details)
                 VALUES ('SYSTEM', 'DATABASE_INITIALIZED', 'Pre-seeded initial verified clinical accounts with Bcrypt hashing.')
             """)
+        else:
+            # Backfill demographics for pre-seeded accounts if null
+            for acc in seed_accounts:
+                cursor.execute("""
+                    UPDATE users SET 
+                        email = COALESCE(email, ?),
+                        age = COALESCE(age, ?),
+                        gender = COALESCE(gender, ?),
+                        address = COALESCE(address, ?),
+                        city = COALESCE(city, ?),
+                        state = COALESCE(state, ?),
+                        pincode = COALESCE(pincode, ?),
+                        specialization = COALESCE(specialization, ?),
+                        experience_years = COALESCE(experience_years, ?),
+                        blood_group = COALESCE(blood_group, ?),
+                        emergency_contact_name = COALESCE(emergency_contact_name, ?),
+                        emergency_contact_phone = COALESCE(emergency_contact_phone, ?)
+                    WHERE username = ?
+                """, (
+                    acc.get("email"), acc.get("age"), acc.get("gender"), acc.get("address"),
+                    acc.get("city"), acc.get("state"), acc.get("pincode"), acc.get("specialization"),
+                    acc.get("experience_years"), acc.get("blood_group"), acc.get("emergency_contact_name"),
+                    acc.get("emergency_contact_phone"), acc["username"]
+                ))
 
 
 def get_user_by_identifier(identifier: str) -> Optional[Dict[str, Any]]:
@@ -192,6 +304,80 @@ def get_user_by_identifier(identifier: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
+    """Strictly looks up user by unique username (case-insensitive)."""
+    if not username:
+        return None
+    clean = username.strip().lower()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? LIMIT 1", (clean,))
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
+    return None
+
+
+def verify_doctor_phone_match(username: str, phone: str) -> Tuple[bool, Optional[Dict[str, Any]], str]:
+    """
+    Checks that the entered username exists and the entered phone strictly matches
+    the phone number registered for that doctor account.
+    Returns: (is_matched, user_dict, message)
+    """
+    user = get_user_by_username(username)
+    if not user:
+        # Also check if username entered was their phone or reg number
+        user = get_user_by_identifier(username)
+    
+    if not user:
+        return False, None, f"No account found with username '{username}'."
+
+    cleaned_phone = "".join(c for c in phone if c.isdigit())
+    if cleaned_phone.startswith("91") and len(cleaned_phone) == 12:
+        cleaned_phone = cleaned_phone[2:]
+
+    reg_phone = "".join(c for c in (user.get("phone") or "") if c.isdigit())
+
+    if cleaned_phone != reg_phone:
+        return False, user, "Mobile number does not match the registered record for this account."
+
+    return True, user, "User credentials verified."
+
+
+def fetch_location_by_gps() -> Dict[str, Any]:
+    """
+    Auto-detects geographic location coordinates & address info using network geolocation.
+    Provides graceful fallback to Bantwal / Mangalore, Karnataka if network is offline.
+    """
+    try:
+        req = urllib.request.Request("http://ip-api.com/json/", headers={"User-Agent": "Mozilla/5.0 MedFuse-AI"})
+        with urllib.request.urlopen(req, timeout=2.5) as response:
+            data = json.loads(response.read().decode())
+            if data.get("status") == "success":
+                lat = data.get("lat", 12.9187)
+                lon = data.get("lon", 74.8598)
+                return {
+                    "city": data.get("city", "Mangaluru"),
+                    "state": data.get("regionName", "Karnataka"),
+                    "pincode": data.get("zip", "575007"),
+                    "gps_coordinates": f"{lat:.4f}° N, {lon:.4f}° E",
+                    "success": True,
+                    "source": "Network GPS"
+                }
+    except Exception:
+        pass
+
+    # High-fidelity fallback for coastal Karnataka primary healthcare deployment
+    return {
+        "city": "Bantwal",
+        "state": "Karnataka",
+        "pincode": "574211",
+        "gps_coordinates": "12.8913° N, 75.0347° E",
+        "success": True,
+        "source": "Local Healthcare Zone Default"
+    }
+
+
 def create_user(
     username: str,
     password: str,
@@ -199,11 +385,24 @@ def create_user(
     role: str,
     phone: str,
     reg_number: Optional[str] = None,
-    organization: Optional[str] = None
+    organization: Optional[str] = None,
+    email: Optional[str] = None,
+    age: Optional[int] = None,
+    gender: Optional[str] = None,
+    address: Optional[str] = None,
+    city: Optional[str] = None,
+    state: Optional[str] = None,
+    pincode: Optional[str] = None,
+    gps_coordinates: Optional[str] = None,
+    emergency_contact_name: Optional[str] = None,
+    emergency_contact_phone: Optional[str] = None,
+    specialization: Optional[str] = None,
+    experience_years: Optional[int] = None,
+    blood_group: Optional[str] = None
 ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     """
-    Creates a new user record in the database with Bcrypt password hashing.
-    Enforces uniqueness of username, phone, and registration number.
+    Creates a new user record in the database with full clinical demographic details
+    and Bcrypt password hashing. Enforces uniqueness of username, phone, and registration.
     """
     init_db()
 
@@ -236,8 +435,12 @@ def create_user(
         hashed_pw = hash_password(password)
 
         cursor.execute("""
-            INSERT INTO users (username, password_hash, full_name, role, phone, reg_number, organization)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO users (
+                username, password_hash, full_name, role, phone, reg_number, organization,
+                email, age, gender, address, city, state, pincode, gps_coordinates,
+                emergency_contact_name, emergency_contact_phone, specialization, experience_years, blood_group
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             clean_user,
             hashed_pw,
@@ -245,13 +448,26 @@ def create_user(
             role.lower(),
             clean_phone,
             clean_reg,
-            organization
+            organization,
+            email.strip() if email else None,
+            age,
+            gender,
+            address.strip() if address else None,
+            city.strip() if city else None,
+            state.strip() if state else None,
+            pincode.strip() if pincode else None,
+            gps_coordinates,
+            emergency_contact_name.strip() if emergency_contact_name else None,
+            emergency_contact_phone.strip() if emergency_contact_phone else None,
+            specialization.strip() if specialization else None,
+            experience_years,
+            blood_group
         ))
 
         cursor.execute("""
             INSERT INTO auth_audit_log (username, event_type, details)
             VALUES (?, 'USER_REGISTERED', ?)
-        """, (clean_user, f"Registered role '{role}' for {clean_name}"))
+        """, (clean_user, f"Registered role '{role}' for {clean_name} at {city or 'Unknown'}. GPS: {gps_coordinates or 'Manual'}"))
 
     new_user = get_user_by_identifier(clean_user)
     return True, "Account registered successfully!", new_user
@@ -271,7 +487,6 @@ def record_login_attempt(username: str, is_success: bool) -> Tuple[int, bool, Op
         cursor.execute("SELECT * FROM users WHERE LOWER(username) = ?", (username.lower(),))
         user = cursor.fetchone()
         if not user:
-            # Username doesn't exist, log failure under attempt
             cursor.execute("""
                 INSERT INTO auth_audit_log (username, event_type, details)
                 VALUES (?, 'LOGIN_FAILURE_UNKNOWN_USER', 'Failed login attempt with non-existent identifier.')
@@ -330,7 +545,6 @@ def is_account_locked(user: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
             rem_minutes = max(1, int((locked_until - now).total_seconds() / 60))
             return True, f"⛔ Account locked due to security rate limiting. Please wait {rem_minutes} minute(s) before trying again."
         else:
-            # Lockout expired, auto-clear
             with get_db() as conn:
                 conn.execute("UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE id = ?", (user["id"],))
             return False, None
@@ -355,6 +569,9 @@ __all__ = [
     "hash_password",
     "verify_password",
     "get_user_by_identifier",
+    "get_user_by_username",
+    "verify_doctor_phone_match",
+    "fetch_location_by_gps",
     "create_user",
     "record_login_attempt",
     "is_account_locked",

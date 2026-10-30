@@ -5,6 +5,7 @@ Enforces:
   - Full Name Validation (alphabetical characters only, strictly no numbers or symbols)
   - Strict Indian 10-Digit Mobile Number Validation (6-9 prefix, no arbitrary strings)
   - Medical Council Registration Format (NMC Act 2019 / State Council verification)
+  - Email Address & Postal Pincode Format
   - Password Strength & Confirm Password Matching
 """
 
@@ -30,6 +31,12 @@ COUNCIL_REGEX = re.compile(
     r"^(?P<council>[A-Z]{2,5})[-/ ](?P<seq>[0-9]{4,8}(?:-[0-9]{2,4})?)$",
     re.IGNORECASE
 )
+
+# Standard Email Regex
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+
+# Indian Postal Pincode Regex (6 digits, first digit 1-9)
+PINCODE_REGEX = re.compile(r"^[1-9][0-9]{5}$")
 
 
 def validate_full_name(name: str) -> Tuple[bool, str]:
@@ -100,6 +107,26 @@ def validate_phone_number(phone: str) -> Tuple[bool, str, str]:
     return True, "", cleaned
 
 
+def validate_email(email: str) -> Tuple[bool, str]:
+    """Validates standard email format."""
+    if not email or not email.strip():
+        return True, "" # Optional field
+    clean = email.strip()
+    if not EMAIL_REGEX.match(clean):
+        return False, "Please enter a valid email address (e.g., name@hospital.org)."
+    return True, ""
+
+
+def validate_pincode(pincode: str) -> Tuple[bool, str]:
+    """Validates Indian 6-digit postal pincode."""
+    if not pincode or not pincode.strip():
+        return True, "" # Optional
+    clean = pincode.strip()
+    if not PINCODE_REGEX.match(clean):
+        return False, "Postal Pincode must be a valid 6-digit number."
+    return True, ""
+
+
 def validate_doctor_reg(reg_number: str) -> Tuple[bool, str, str]:
     """
     Validates a doctor's State Medical Council or NMC registration identifier.
@@ -136,7 +163,7 @@ def validate_password(password: str, confirm_password: str = None) -> Tuple[bool
 
     if confirm_password is not None:
         if password != confirm_password:
-            return False, "Passwords do not match. Please re-enter identical passwords."
+            return False, "Passwords do not match. Please re-enter identical passwords in both fields."
 
     return True, ""
 
@@ -144,6 +171,8 @@ def validate_password(password: str, confirm_password: str = None) -> Tuple[bool
 __all__ = [
     "validate_full_name",
     "validate_phone_number",
+    "validate_email",
+    "validate_pincode",
     "validate_doctor_reg",
     "validate_password",
     "RECOGNIZED_COUNCILS"

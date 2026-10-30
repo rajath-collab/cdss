@@ -31,3 +31,4 @@ def fetch_audit_trail(limit: int = 25) -> List[Dict[str, Any]]:
 
 
 __all__ = ["log_security_event", "log_clinical_audit", "fetch_audit_trail"]
+
