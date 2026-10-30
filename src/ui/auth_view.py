@@ -386,7 +386,6 @@ def render_auth_page():
                 [
                     "👤 Patient / Citizen",
                     "👨‍⚕️ Medical Doctor (Certified RMP)",
-                    "🏥 Hospital Administrator / Clinical Lead",
                     "🤝 ASHA / Frontline Health Worker"
                 ],
                 key="signup_role_select"
@@ -463,23 +462,6 @@ def render_auth_page():
                     value="Bantwal District Hospital",
                     key="signup_doc_hosp"
                 ).strip()
-
-            elif "Administrator" in role_choice:
-                st.markdown("<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>Hospital Administration Credentials</div>", unsafe_allow_html=True)
-                doc_reg_val = st.text_input(
-                    "Administrator / Employee ID:",
-                    placeholder="e.g. HOSP-ADMIN-01",
-                    value="HOSP-ADMIN-01",
-                    key="signup_admin_id"
-                ).strip()
-
-                hosp_val = st.text_input(
-                    "Hospital / Health Directorate Facility:",
-                    placeholder="e.g. Bantwal District Hospital",
-                    value="Bantwal District Hospital",
-                    key="signup_admin_hosp"
-                ).strip()
-                doc_spec_val = "Hospital Administration & Governance"
 
             elif "Patient" in role_choice:
                 st.markdown("<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>Patient Clinical Demographics</div>", unsafe_allow_html=True)
@@ -619,10 +601,6 @@ def render_auth_page():
                         st.error(f"⚠️ Medical Council Registration Error: {reg_err}")
                         st.stop()
                     doc_reg_val = cleaned_reg
-                elif "Administrator" in role_choice:
-                    role_code = "admin"
-                    if not doc_reg_val:
-                        doc_reg_val = f"ADMIN-{cleaned_phone[-4:]}"
                 elif "ASHA" in role_choice:
                     role_code = "asha"
                     if not asha_id_val or len(asha_id_val) < 3:
