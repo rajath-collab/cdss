@@ -42,7 +42,7 @@ def extract_clinical_entities(text: str) -> List[Dict]:
         })
     return entities
 
-# ==================== AI EXTRACTOR (Which AI Rajath asked) ====================
+# ==================== AI CLINICAL ENTITY EXTRACTOR (all-MiniLM-L6-v2) ====================
 def ai_clinical_entity_extractor(text: str) -> List[Dict]:
     """AI extractor using sentence-transformers/all-MiniLM-L6-v2"""
     try:
