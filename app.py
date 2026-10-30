@@ -110,20 +110,22 @@ with st.sidebar:
     st.image("https://img.icons8.com/fluency/96/medical-heart.png", width=64)
     
     # Vernacular Language Selector
-    st.markdown(f"<div style='font-size: 0.75rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px;'>{t.get('lang_selector_label', '🌐 Language / ಭಾಷೆ:')}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='font-size: 0.75rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px;'>{t.get('lang_selector_label', '🌐 Portal Language / ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ:')}</div>", unsafe_allow_html=True)
     lang_keys = list(LANGUAGES.keys())
     cur_idx = lang_keys.index(ui_lang) if ui_lang in lang_keys else 0
-    sel_lang = st.selectbox(
+
+    def _on_side_lang_select():
+        st.session_state["ui_lang"] = st.session_state["sidebar_lang_selector"]
+
+    st.selectbox(
         "Choose Language",
         lang_keys,
         index=cur_idx,
         format_func=lambda k: f"{LANGUAGES[k]['flag']} {LANGUAGES[k]['native']}",
         key="sidebar_lang_selector",
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        on_change=_on_side_lang_select
     )
-    if sel_lang != ui_lang:
-        st.session_state["ui_lang"] = sel_lang
-        st.rerun()
 
     if user_role == "admin":
         role_badge = t.get("role_admin", "Hospital Superintendent / Admin")

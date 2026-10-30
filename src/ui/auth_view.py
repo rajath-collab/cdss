@@ -82,28 +82,36 @@ def render_auth_page():
     col_l, col_center, col_r = st.columns([1, 2.2, 1])
 
     with col_center:
-        col_hdr, col_lng = st.columns([1.5, 1.2])
-        with col_hdr:
-            st.markdown("""
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                    <span style="font-size: 2.2rem;">🩺</span>
-                    <span style="font-size: 1.5rem; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">MEDFUSE-AI</span>
+        st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #cbd5e1; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 2.2rem; line-height: 1;">🩺</span>
+                    <div>
+                        <div style="font-size: 1.45rem; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; line-height: 1.1;">MEDFUSE-AI</div>
+                        <div style="font-size: 0.76rem; color: #64748b; font-weight: 600;">Multimodal Clinical Decision Support System</div>
+                    </div>
                 </div>
-            """, unsafe_allow_html=True)
-        with col_lng:
-            lang_keys = list(LANGUAGES.keys())
-            cur_idx = lang_keys.index(ui_lang) if ui_lang in lang_keys else 0
-            sel_lang = st.selectbox(
-                "Language Selector",
-                lang_keys,
-                index=cur_idx,
-                format_func=lambda k: f"{LANGUAGES[k]['flag']} {LANGUAGES[k]['native']}",
-                key="auth_lang_select_top",
-                label_visibility="collapsed"
-            )
-            if sel_lang != ui_lang:
-                st.session_state["ui_lang"] = sel_lang
-                st.rerun()
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Prominent Vernacular Language Selector Banner
+        st.markdown(f"<div style='font-size: 0.8rem; font-weight: 800; color: #0284c7; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;'>{t.get('lang_selector_label', '🌐 Portal Language / ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ:')}</div>", unsafe_allow_html=True)
+        lang_keys = list(LANGUAGES.keys())
+        cur_idx = lang_keys.index(ui_lang) if ui_lang in lang_keys else 0
+
+        def _on_auth_lang_select():
+            st.session_state["ui_lang"] = st.session_state["auth_lang_select_top"]
+
+        st.selectbox(
+            "Portal Language",
+            lang_keys,
+            index=cur_idx,
+            format_func=lambda k: f"{LANGUAGES[k]['flag']} {LANGUAGES[k]['native']}",
+            key="auth_lang_select_top",
+            label_visibility="collapsed",
+            on_change=_on_auth_lang_select
+        )
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
         tab_signin, tab_signup = st.tabs([
             t.get("auth_signin_tab", "🔑 Sign In"),
@@ -128,13 +136,13 @@ def render_auth_page():
 
                 login_username = st.text_input(
                     t.get("auth_username_label", "Username:"),
-                    placeholder="e.g. dr.ramesh, dr.priya, patient.rajesh",
+                    placeholder=t.get("placeholder_username", "e.g. dr.ramesh, dr.priya, patient.rajesh"),
                     key="login_step1_username"
                 ).strip()
 
                 login_phone = st.text_input(
                     t.get("auth_mobile_label", "10-Digit Registered Mobile Number:"),
-                    placeholder="e.g. 9845012345",
+                    placeholder=t.get("placeholder_phone", "e.g. 9845012345"),
                     key="login_step1_phone"
                 ).strip()
 
@@ -418,20 +426,20 @@ def render_auth_page():
             # Full Name (Letters only - Strictly validated)
             new_name = st.text_input(
                 t.get("signup_fullname_label", "Full Name (Alphabetic letters & spaces only):"),
-                placeholder="e.g. Ananya Rao",
+                placeholder=t.get("placeholder_name", "e.g. Ramesh Hegde / Ananya Rao"),
                 key="signup_name_input"
             ).strip()
 
             # 10-Digit Mobile Contact (Strictly validated)
             new_phone = st.text_input(
                 t.get("signup_mobile_label", "Mobile Contact (10-Digit Indian Mobile Number):"),
-                placeholder="e.g. 9845012345",
+                placeholder=t.get("placeholder_phone", "e.g. 9845012345"),
                 key="signup_phone_input"
             ).strip()
 
             new_email = st.text_input(
                 t.get("signup_email_label", "Email Address (Optional):"),
-                placeholder="e.g. ananya.rao@hospital.org",
+                placeholder=t.get("placeholder_email", "e.g. user@hospital.org"),
                 key="signup_email_input"
             ).strip()
 
@@ -439,7 +447,18 @@ def render_auth_page():
             with col_age:
                 new_age = st.number_input(t.get("signup_age_label", "Age:"), min_value=1, max_value=120, value=35, step=1, key="signup_age_input")
             with col_gen:
-                new_gender = st.selectbox(t.get("signup_gender_label", "Gender:"), ["Male", "Female", "Other", "Prefer not to disclose"], key="signup_gender_input")
+                gender_options = {
+                    "Male": t.get("gender_male", "Male"),
+                    "Female": t.get("gender_female", "Female"),
+                    "Other": t.get("gender_other", "Other"),
+                    "Prefer not to disclose": t.get("gender_undisclosed", "Prefer not to disclose")
+                }
+                new_gender = st.selectbox(
+                    t.get("signup_gender_label", "Gender:"),
+                    list(gender_options.keys()),
+                    format_func=lambda k: gender_options[k],
+                    key="signup_gender_input"
+                )
 
             # ---------------- Role-Specific Information ----------------
             doc_reg_val = None
@@ -461,17 +480,28 @@ def render_auth_page():
 
                 col_spec, col_exp = st.columns([1.5, 1])
                 with col_spec:
+                    spec_options = [
+                        "Pulmonology & Critical Care",
+                        "Thoracic Radiology",
+                        "General Medicine / Internal Medicine",
+                        "Emergency & Trauma Medicine",
+                        "Cardiology & Tele-ICU",
+                        "Pediatric Pulmonology",
+                        "Other Medical Specialization"
+                    ]
+                    spec_labels = {
+                        "Pulmonology & Critical Care": t.get("spec_pulm", "Pulmonology & Critical Care"),
+                        "Thoracic Radiology": t.get("spec_rad", "Thoracic Radiology"),
+                        "General Medicine / Internal Medicine": t.get("spec_gen_med", "General Medicine / Internal Medicine"),
+                        "Emergency & Trauma Medicine": t.get("spec_emg", "Emergency & Trauma Medicine"),
+                        "Cardiology & Tele-ICU": t.get("spec_cardio", "Cardiology & Tele-ICU"),
+                        "Pediatric Pulmonology": t.get("spec_ped", "Pediatric Pulmonology"),
+                        "Other Medical Specialization": t.get("spec_other", "Other Medical Specialization")
+                    }
                     doc_spec_val = st.selectbox(
                         t.get("signup_doc_spec_label", "Clinical Specialization:"),
-                        [
-                            "Pulmonology & Critical Care",
-                            "Thoracic Radiology",
-                            "General Medicine / Internal Medicine",
-                            "Emergency & Trauma Medicine",
-                            "Cardiology & Tele-ICU",
-                            "Pediatric Pulmonology",
-                            "Other Medical Specialization"
-                        ],
+                        spec_options,
+                        format_func=lambda k: spec_labels.get(k, k),
                         key="signup_doc_spec"
                     )
                 with col_exp:
@@ -486,11 +516,21 @@ def render_auth_page():
 
             elif "Patient" in role_choice:
                 st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>{t.get('signup_patient_sec', 'Patient Clinical Demographics')}</div>", unsafe_allow_html=True)
-                patient_blood_group = st.selectbox(t.get("signup_blood_group_label", "Blood Group:"), ["Unknown / Not Tested", "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"], key="signup_blood_group")
+                blood_options = ["Unknown / Not Tested", "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]
+                blood_labels = {
+                    "Unknown / Not Tested": t.get("blood_unknown", "Unknown / Not Tested"),
+                    "A+": "A+", "A-": "A-", "B+": "B+", "B-": "B-", "O+": "O+", "O-": "O-", "AB+": "AB+", "AB-": "AB-"
+                }
+                patient_blood_group = st.selectbox(
+                    t.get("signup_blood_group_label", "Blood Group:"),
+                    blood_options,
+                    format_func=lambda k: blood_labels.get(k, k),
+                    key="signup_blood_group"
+                )
 
                 col_emg1, col_emg2 = st.columns(2)
                 with col_emg1:
-                    patient_emg_name = st.text_input(t.get("signup_emg_name_label", "Emergency Contact Person:"), placeholder="e.g. Suresh Kumar (Brother)", key="signup_emg_name").strip()
+                    patient_emg_name = st.text_input(t.get("signup_emg_name_label", "Emergency Contact Person:"), placeholder=t.get("placeholder_emg_name", "e.g. Suresh Kumar (Brother)"), key="signup_emg_name").strip()
                 with col_emg2:
                     patient_emg_phone = st.text_input(t.get("signup_emg_phone_label", "Emergency Contact Mobile:"), placeholder="e.g. 9448199999", key="signup_emg_phone").strip()
 
@@ -532,7 +572,7 @@ def render_auth_page():
 
             address_street = st.text_input(
                 t.get("signup_street_label", "Street Address / House No / Locality:"),
-                placeholder="e.g. Main Hospital Road, Zone 2",
+                placeholder=t.get("placeholder_street", "e.g. Main Hospital Road, Zone 2"),
                 key="signup_addr_street"
             ).strip()
 
