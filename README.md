@@ -48,15 +48,41 @@ Open your browser at: **[http://localhost:8501](http://localhost:8501)**
 
 ---
 
-## 🔑 Demo Sign-In Credentials
+## 🔑 Verified Clinical Login Credentials
 
-### 👤 Patient Portal
-- **Mobile Number:** `9845012345` (or click 1-Click Instant Demo)
-- **Demo OTP:** `123456`
+The application uses an SQLite database with 12-round Bcrypt password hashing and brute-force protection:
 
-### 👨‍⚕️ Clinician / Radiologist Console
-- **Medical Council Reg No:** `KMC-58291` (Dr. Ramesh Rao)
-- **Doctor Security PIN:** `7788` (or click 1-Click Instant Demo)
+### 👨‍⚕️ Clinician / Radiologist (Doctor)
+- **Identifier:** `dr.ramesh` or `KMC-58291`
+- **Password:** `doctor123`
+- **Department:** Pulmonology & Tele-ICU Center
+
+### 👩‍⚕️ Radiologist Console
+- **Identifier:** `dr.priya` or `KMC-41209`
+- **Password:** `doctor123`
+- **Department:** Thoracic Diagnostic Imaging
+
+### 👤 Remote Patient Portal
+- **Identifier:** `9845067890` or `patient.rajesh`
+- **Password:** `patient123`
+
+### 🤝 ASHA / Field Health Worker
+- **Identifier:** `9741054321` or `asha.sunita`
+- **Password:** `asha123`
+
+*(You can also use the **Sign Up** tab to create a new patient, doctor, or ASHA account with full validation and confirm password check).*
+
+---
+
+## 🛡️ Security Implementation & Input Guardrails
+
+- **Full Name Validation:** Alphabetic letters and spaces only. Strictly rejects numbers, digits, and special characters.
+- **Indian Mobile Validation:** Exactly 10 digits starting with 6, 7, 8, or 9. Rejects arbitrary strings, invalid lengths, or foreign non-standard inputs.
+- **Confirm Password Verification:** Enforces minimum 6 characters and matching confirmation passwords during registration.
+- **ACID SQLite Database:** Persistent user accounts and authentication state in `src/security/medfuse_auth.db`.
+- **Bcrypt Encryption:** Salting and hashing with 12 work rounds.
+- **Brute-Force Rate Limiting:** Locks accounts for 15 minutes after 5 consecutive failed login attempts.
+- **Audit Logging:** Immutable clinical session and security audit logging.
 
 ---
 

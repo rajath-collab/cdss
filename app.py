@@ -81,8 +81,20 @@ else:
             st.rerun()
 
 # -------------------------------------------------------------
-# 2. Authentication Gateway Gate
+# 2. Authentication Gateway Gate & Session Security Guard
 # -------------------------------------------------------------
+# Session Inactivity Timeout Guard (HIPAA & DPDP Act Compliance)
+if st.session_state.get("authenticated", False):
+    last_act = st.session_state.get("last_activity") or time.time()
+    elapsed_minutes = (time.time() - last_act) / 60
+    if elapsed_minutes > 60:
+        st.session_state["authenticated"] = False
+        st.session_state["current_user"] = None
+        st.session_state["user_role"] = None
+        st.warning("⚠️ Clinical session expired due to inactivity. Please sign in again.")
+        st.rerun()
+    st.session_state["last_activity"] = time.time()
+
 if not st.session_state["authenticated"]:
     render_auth_page()
     st.stop()

@@ -37,7 +37,7 @@ def render_patient_portal():
     ])
 
     with tab_new_scan:
-        st.markdown("#### ⚡ Quick Preset Demonstrations (1-Click Viva Testing)")
+        st.markdown("#### ⚡ Clinical Sample Test Presets (Thoracic Radiograph & Lab Biomarkers)")
         col_p1, col_p2, col_p3, col_p4 = st.columns(4)
         use_pneumonia = col_p1.button("⚠️ Bacterial Pneumonia", use_container_width=True)
         use_normal = col_p2.button("✅ Normal Baseline", use_container_width=True)
