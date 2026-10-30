@@ -9,22 +9,26 @@ from PIL import Image
 import pandas as pd
 from src.ui.styles import CUSTOM_CSS
 from src.ui.image_utils import get_real_sample_xray
+from src.ui.translations import get_ui_text
 
 def render_direct_sandbox(app_mode: str = "Multimodal Ingestion"):
     """Renders the standalone multimodal ingestion, presets, and frontline ASHA voice triage."""
+    ui_lang = st.session_state.get("ui_lang", "en")
+    t = get_ui_text(ui_lang)
+
     st.markdown(f"""
         <div class="med-card" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff; border-left: 5px solid #0284c7;">
-            <h2 style="margin: 0; color: #38bdf8;">🔬 Multimodal Ingestion Sandbox & Frontline Advisory</h2>
+            <h2 style="margin: 0; color: #38bdf8;">{t.get('sb_header_title', '🔬 Multimodal Ingestion Sandbox & Frontline Advisory')}</h2>
             <p style="color: #94a3b8; margin: 4px 0 0 0;">
-                Frontline testing sandbox for chest radiographs, diagnostic laboratory slips, and field ASHA advisories.
+                {t.get('sb_header_desc', 'Frontline testing sandbox for chest radiographs, diagnostic laboratory slips, and field ASHA advisories.')}
             </p>
         </div>
     """, unsafe_allow_html=True)
 
     # Preset Quick Selectors
-    st.markdown("#### ⚡ Sandbox Preset Loaders:")
+    st.markdown(f"#### {t.get('sb_preset_title', '⚡ Sandbox Preset Loaders:')}")
     cp1, cp2, cp3, cp4 = st.columns(4)
-    if cp1.button("⚠️ Preset: Bacterial Pneumonia", use_container_width=True):
+    if cp1.button(t.get("preset_pneumonia", "⚠️ Preset: Bacterial Pneumonia"), use_container_width=True):
         st.session_state.sb_xray = get_real_sample_xray("pneumonia")
         st.session_state.sb_has_pdf = True
         st.session_state.sb_pred = "Bacterial Pneumonia / Focal Consolidation"
@@ -34,7 +38,7 @@ def render_direct_sandbox(app_mode: str = "Multimodal Ingestion"):
         st.session_state.sb_crp = "48.0 mg/L (High)"
         st.toast("Loaded Real Pneumonia Radiograph (pneumonia-232.jpg) in Sandbox!", icon="⚠️")
 
-    if cp2.button("✅ Preset: Normal Baseline", use_container_width=True):
+    if cp2.button(t.get("preset_normal", "✅ Preset: Normal Baseline"), use_container_width=True):
         st.session_state.sb_xray = get_real_sample_xray("normal")
         st.session_state.sb_has_pdf = True
         st.session_state.sb_pred = "Normal Thoracic Baseline"
@@ -44,7 +48,7 @@ def render_direct_sandbox(app_mode: str = "Multimodal Ingestion"):
         st.session_state.sb_crp = "2.1 mg/L (Normal)"
         st.toast("Loaded Real Normal Baseline in Sandbox!", icon="✅")
 
-    if cp3.button("🚨 Preset: Tuberculosis", use_container_width=True):
+    if cp3.button(t.get("preset_tb", "🚨 Preset: Tuberculosis"), use_container_width=True):
         st.session_state.sb_xray = get_real_sample_xray("tb")
         st.session_state.sb_has_pdf = True
         st.session_state.sb_pred = "Pulmonary Tuberculosis Suspect"
@@ -54,7 +58,7 @@ def render_direct_sandbox(app_mode: str = "Multimodal Ingestion"):
         st.session_state.sb_crp = "34.0 mg/L"
         st.toast("Loaded Real TB Preset in Sandbox!", icon="🚨")
 
-    if cp4.button("✕ Reset Sandbox", use_container_width=True):
+    if cp4.button(t.get("sb_reset", "✕ Reset Sandbox"), use_container_width=True):
         st.session_state.sb_xray = None
         st.session_state.sb_has_pdf = False
         st.rerun()

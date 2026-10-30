@@ -126,7 +126,7 @@ with st.sidebar:
         st.rerun()
 
     if user_role == "admin":
-        role_badge = "Hospital Superintendent / Admin"
+        role_badge = t.get("role_admin", "Hospital Superintendent / Admin")
     elif user_role == "doctor":
         role_badge = t.get("role_doctor", "Clinician MD")
     elif user_role == "asha":
@@ -138,7 +138,7 @@ with st.sidebar:
     <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
         <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">{t.get('active_session', 'ACTIVE CLINICAL SESSION')}</div>
         <div style="font-size: 0.95rem; font-weight: 700; color: #0f172a;">{user_id}</div>
-        <div style="font-size: 0.8rem; color: #0284c7; font-weight: 600;">Role: {role_badge}</div>
+        <div style="font-size: 0.8rem; color: #0284c7; font-weight: 600;">{t.get('role_label', 'Role:')} {role_badge}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -149,48 +149,42 @@ with st.sidebar:
 
     st.divider()
 
-    # RBAC Persona Navigation Filter - Strict Zero Patient Access to Admin or Clinician Consoles
-    if user_role == "admin":
-        nav_options = [
-            "🏥 Hospital Clinical Administration & Governance",
-            "👨‍⚕️ Clinician Diagnostic & Triage Console (Module 2)",
-            "🔬 Multimodal Direct Ingestion Sandbox (Module 5)",
-            "💬 Clinical Knowledge & RAG Assistant (Module 4)"
-        ]
-    elif user_role == "doctor":
-        nav_options = [
-            "👨‍⚕️ Clinician Diagnostic & Triage Console (Module 2)",
-            "🏥 Hospital Clinical Administration & Governance",
-            "🔬 Multimodal Direct Ingestion Sandbox (Module 5)",
-            "💬 Clinical Knowledge & RAG Assistant (Module 4)"
-        ]
-    elif user_role == "asha":
-        nav_options = [
-            "🤝 ASHA / Frontline Health Worker (Field Mode)",
-            "🔬 Multimodal Direct Ingestion Sandbox (Module 5)",
-            "💬 Clinical Knowledge & RAG Assistant (Module 4)"
-        ]
-    else:  # patient
-        nav_options = [
-            "🏠 Remote Patient & Home Care (Module 1)",
-            "💬 Clinical Knowledge & RAG Assistant (Module 4)"
-        ]
+    # RBAC Persona Navigation Filter - Fully Localized
+    nav_labels = {
+        "admin": t.get("nav_admin", "🏥 Hospital Clinical Administration & Governance"),
+        "clinician": t.get("nav_clinician", "👨‍⚕️ Clinician Diagnostic & Triage Console (Module 2)"),
+        "sandbox": t.get("nav_sandbox", "🔬 Multimodal Direct Ingestion Sandbox (Module 5)"),
+        "rag": t.get("nav_rag", "💬 Clinical Knowledge & RAG Assistant (Module 4)"),
+        "asha": t.get("nav_asha", "🤝 ASHA / Frontline Health Worker (Field Mode)"),
+        "patient": t.get("nav_patient", "🏠 Remote Patient & Home Care (Module 1)")
+    }
 
-    app_mode = st.radio(
-        "Select User Persona / Component View:",
-        nav_options,
-        index=0
+    if user_role == "admin":
+        nav_keys = ["admin", "clinician", "sandbox", "rag"]
+    elif user_role == "doctor":
+        nav_keys = ["clinician", "admin", "sandbox", "rag"]
+    elif user_role == "asha":
+        nav_keys = ["asha", "sandbox", "rag"]
+    else:  # patient
+        nav_keys = ["patient", "rag"]
+
+    app_key = st.radio(
+        t.get("select_persona", "Select User Persona / View:"),
+        nav_keys,
+        format_func=lambda k: nav_labels[k],
+        index=0,
+        key="main_nav_radio"
     )
 
     st.divider()
-    st.markdown("""
+    st.markdown(f"""
     <div style="font-size: 0.8rem; color: #78350f; line-height: 1.45; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-        💡 <strong>Point-of-Care Advisory:</strong><br/>
-        All AI inferences act as assistive recommendations under human-in-the-loop oversight.
+        💡 <strong>{t.get('sidebar_disclaimer_title', 'Point-of-Care Advisory:')}</strong><br/>
+        {t.get('sidebar_disclaimer_desc', 'All AI inferences act as assistive recommendations under human-in-the-loop oversight.')}
         <div style="margin-top: 8px; font-size: 0.74rem; color: #92400e; border-top: 1px dashed #fde68a; padding-top: 6px;">
-            • AIIMS Clinical AI Standards<br/>
-            • ICMR Biomedical AI Ethics 2023<br/>
-            • NMC Act 2019 RMP Directives
+            • {t.get('notice_aiims_short', 'AIIMS Clinical AI Standards')}<br/>
+            • {t.get('notice_icmr_short', 'ICMR Biomedical AI Ethics 2023')}<br/>
+            • {t.get('notice_nmc_short', 'NMC Act 2019 RMP Directives')}
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -198,21 +192,21 @@ with st.sidebar:
 # -------------------------------------------------------------
 # 🎯 COMPONENT ROUTING CONTROLLER
 # -------------------------------------------------------------
-if "Hospital Clinical Administration" in app_mode:
+if app_key == "admin":
     if user_role not in ["admin", "doctor"]:
         st.error("⛔ Access Denied: Administrator or Certified Clinician Privileges Required. Patients cannot access hospital governance.")
         st.stop()
     render_system_admin_portal()
-elif "Remote Patient" in app_mode:
+elif app_key == "patient":
     render_patient_portal()
-elif "Clinician Diagnostic" in app_mode:
+elif app_key == "clinician":
     if user_role not in ["admin", "doctor"]:
         st.error("⛔ Access Denied: Certified Medical Practitioner Privileges Required. Patients cannot access clinician diagnostics.")
         st.stop()
     render_admin_portal()
-elif "Knowledge & RAG" in app_mode:
+elif app_key == "rag":
     render_rag_window(user_persona=user_role)
-elif "ASHA" in app_mode:
+elif app_key == "asha":
     render_direct_sandbox(app_mode="ASHA Field Mode")
 else:
     render_direct_sandbox(app_mode="Multimodal Sandbox")
@@ -221,29 +215,29 @@ else:
 # 📜 REGULATORY, PRIVACY & CLINICAL GOVERNANCE FOOTER
 # -------------------------------------------------------------
 st.divider()
-st.markdown("""
+st.markdown(f"""
 <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px 24px; margin-top: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);">
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px;">
         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-left: 5px solid #d97706; border-radius: 8px; padding: 16px;">
             <div style="font-weight: 700; color: #78350f; font-size: 0.98rem; margin-bottom: 6px;">
-                💡 Assistive SaMD Class B Clinical Policy
+                💡 {t.get('footer_assistive_title', 'Assistive SaMD Class B Clinical Policy')}
             </div>
             <p style="font-size: 0.81rem; color: #475569; line-height: 1.5; margin: 0;">
-                Engineered as a point-of-care second-opinion aid. Under the National Medical Commission (NMC) Act 2019, diagnostic and therapeutic authority rests exclusively with certified medical doctors.
+                {t.get('footer_assistive_desc', 'Engineered as a point-of-care second-opinion aid. Under the National Medical Commission (NMC) Act 2019, diagnostic and therapeutic authority rests exclusively with certified medical doctors.')}
             </p>
         </div>
         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-left: 5px solid #0284c7; border-radius: 8px; padding: 16px;">
             <div style="font-weight: 700; color: #0c4a6e; font-size: 0.98rem; margin-bottom: 6px;">
-                🛡️ DPDP Act 2023 & HIPAA Security Safeguards
+                🛡️ {t.get('footer_dpdp_title', 'DPDP Act 2023 & HIPAA Security Safeguards')}
             </div>
             <p style="font-size: 0.81rem; color: #475569; line-height: 1.5; margin: 0;">
-                Strict client-side volatile memory processing. Zero cloud telemetric leakage. Protected Health Information (PHI) is isolated in compliance with Indian healthcare IT regulations.
+                {t.get('footer_dpdp_desc', 'Strict client-side volatile memory processing. Zero cloud telemetric leakage. Protected Health Information (PHI) is isolated in compliance with Indian healthcare IT regulations.')}
             </p>
         </div>
     </div>
     <div style="border-top: 1px solid #e2e8f0; margin-top: 14px; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; color: #64748b; flex-wrap: wrap; gap: 8px;">
-        <span>© 2026 MedFuse-AI Multimodal Clinical Decision Support System | Point-of-Care Edition</span>
-        <span>AIIMS Standards • ICMR Ethics 2023 • NMC Act 2019 • DPDP Act 2023 • CDSCO SaMD Class B</span>
+        <span>{t.get('footer_copyright', '© 2026 MedFuse-AI Multimodal Clinical Decision Support System | Point-of-Care Edition')}</span>
+        <span>{t.get('footer_statutory_standards', 'AIIMS Standards • ICMR Ethics 2023 • NMC Act 2019 • DPDP Act 2023 • CDSCO SaMD Class B')}</span>
     </div>
 </div>
 """, unsafe_allow_html=True)

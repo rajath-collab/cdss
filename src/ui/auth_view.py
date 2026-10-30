@@ -33,10 +33,13 @@ from src.security.guardrails import (
     validate_password,
     RECOGNIZED_COUNCILS
 )
+from src.ui.translations import get_ui_text, LANGUAGES
 
 
 def render_auth_page():
     """Renders the secure Sign In / Sign Up portal with multi-step verification, GPS auto-detect, and database persistence."""
+    ui_lang = st.session_state.get("ui_lang", "en")
+    t = get_ui_text(ui_lang)
     st.markdown("""
         <style>
         .auth-card {
@@ -79,17 +82,32 @@ def render_auth_page():
     col_l, col_center, col_r = st.columns([1, 2.2, 1])
 
     with col_center:
-        # Clean Header - Removed subtitle banner and security pills per user specification
-        st.markdown("""
-            <div style="text-align: center; margin-bottom: 24px;">
-                <span style="font-size: 3rem;">🩺</span>
-                <div class="auth-title">MEDFUSE-AI POINT-OF-CARE</div>
-            </div>
-        """, unsafe_allow_html=True)
+        col_hdr, col_lng = st.columns([1.5, 1.2])
+        with col_hdr:
+            st.markdown("""
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                    <span style="font-size: 2.2rem;">🩺</span>
+                    <span style="font-size: 1.5rem; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">MEDFUSE-AI</span>
+                </div>
+            """, unsafe_allow_html=True)
+        with col_lng:
+            lang_keys = list(LANGUAGES.keys())
+            cur_idx = lang_keys.index(ui_lang) if ui_lang in lang_keys else 0
+            sel_lang = st.selectbox(
+                "Language Selector",
+                lang_keys,
+                index=cur_idx,
+                format_func=lambda k: f"{LANGUAGES[k]['flag']} {LANGUAGES[k]['native']}",
+                key="auth_lang_select_top",
+                label_visibility="collapsed"
+            )
+            if sel_lang != ui_lang:
+                st.session_state["ui_lang"] = sel_lang
+                st.rerun()
 
         tab_signin, tab_signup = st.tabs([
-            "🔑 Sign In",
-            "📝 Sign Up (Create Account)"
+            t.get("auth_signin_tab", "🔑 Sign In"),
+            t.get("auth_signup_tab", "📝 Sign Up (Create Account)")
         ])
 
         # -----------------------------------------------------------------
@@ -106,24 +124,23 @@ def render_auth_page():
             # STEP 1: Username & 10-Digit Mobile Number Verification
             # -------------------------------------------------------------
             if st.session_state["auth_login_step"] == 1:
-                st.markdown("<span class='step-indicator'>STEP 1 OF 2: IDENTITY VERIFICATION</span>", unsafe_allow_html=True)
-                st.markdown("##### Sign In to Point-of-Care Portal")
+                st.markdown(f"<span class='step-indicator'>{t.get('auth_step1_label', 'STEP 1 OF 2: IDENTITY VERIFICATION')}</span>", unsafe_allow_html=True)
 
                 login_username = st.text_input(
-                    "Username:",
+                    t.get("auth_username_label", "Username:"),
                     placeholder="e.g. dr.ramesh, dr.priya, patient.rajesh",
                     key="login_step1_username"
                 ).strip()
 
                 login_phone = st.text_input(
-                    "10-Digit Registered Mobile Number:",
+                    t.get("auth_mobile_label", "10-Digit Registered Mobile Number:"),
                     placeholder="e.g. 9845012345",
                     key="login_step1_phone"
                 ).strip()
 
                 st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
-                if st.button("Verify & Proceed ➡️", type="primary", use_container_width=True, key="btn_login_step1"):
+                if st.button(t.get("auth_btn_verify", "Verify & Proceed ➡️"), type="primary", use_container_width=True, key="btn_login_step1"):
                     if not login_username:
                         st.error("⚠️ Please enter your registered username.")
                     elif not login_phone:
@@ -175,19 +192,19 @@ def render_auth_page():
 
                 user_role = user.get("role", "patient")
 
-                st.markdown("<span class='step-indicator'>STEP 2 OF 2: CREDENTIAL CHALLENGE</span>", unsafe_allow_html=True)
+                st.markdown(f"<span class='step-indicator'>{t.get('auth_step2_label', 'STEP 2 OF 2: CREDENTIAL CHALLENGE')}</span>", unsafe_allow_html=True)
 
                 # Show verified identity card
                 st.markdown(f"""
                     <div class="verified-box">
                         <div style="font-size: 0.74rem; font-weight: 700; color: #0284c7; text-transform: uppercase;">
-                            ✓ Verified Identity
+                            {t.get('auth_verified_identity', '✓ Verified Identity')}
                         </div>
                         <div style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin-top: 2px;">
                             {user.get('full_name')}
                         </div>
                         <div style="font-size: 0.82rem; color: #475569; margin-top: 3px;">
-                            Username: <code>{user.get('username')}</code> &nbsp;•&nbsp; Mobile: <code>+91 {user.get('phone')}</code>
+                            {t.get('auth_username_tag', 'Username:')} <code>{user.get('username')}</code> &nbsp;•&nbsp; {t.get('auth_mobile_tag', 'Mobile:')} <code>+91 {user.get('phone')}</code>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
@@ -196,17 +213,17 @@ def render_auth_page():
                 # DOCTOR CHALLENGE: Demands Medical Council Reg No + Password
                 # ---------------------------------------------------------
                 if user_role == "doctor":
-                    st.markdown("##### Certified Practitioner Authentication")
-                    st.caption("Doctor accounts require Medical Council registration verification to prevent unauthorized access.")
+                    st.markdown(f"##### {t.get('auth_doc_chal_title', 'Certified Practitioner Authentication')}")
+                    st.caption(t.get('auth_doc_chal_desc', 'Doctor accounts require Medical Council registration verification to prevent unauthorized access.'))
 
                     doc_council_input = st.text_input(
-                        "Medical Council Registration Number (NMC / State Council):",
+                        t.get("auth_doc_council_label", "Medical Council Registration Number (NMC / State Council):"),
                         placeholder="e.g. KMC-58291, MMC-41209",
                         key="login_step2_council_reg"
                     ).strip()
 
                     doc_password = st.text_input(
-                        "Doctor Account Password:",
+                        t.get("auth_doc_pw_label", "Doctor Account Password:"),
                         type="password",
                         placeholder="Enter your confidential account password",
                         key="login_step2_doc_password"
@@ -217,7 +234,7 @@ def render_auth_page():
                     col_s2_submit, col_s2_back = st.columns([1.5, 1])
 
                     with col_s2_submit:
-                        if st.button("🔐 Verify Doctor Credentials", type="primary", use_container_width=True, key="btn_login_step2_doc"):
+                        if st.button(t.get("auth_btn_doc_login", "🔐 Verify Doctor Credentials"), type="primary", use_container_width=True, key="btn_login_step2_doc"):
                             if not doc_council_input:
                                 st.error("⚠️ Please enter your Medical Council Registration Number.")
                             elif not doc_password:
@@ -260,7 +277,7 @@ def render_auth_page():
                                             st.rerun()
 
                     with col_s2_back:
-                        if st.button("← Change Account", use_container_width=True, key="btn_login_back_doc"):
+                        if st.button(t.get("auth_btn_change_account", "← Change Account"), use_container_width=True, key="btn_login_back_doc"):
                             st.session_state["auth_login_step"] = 1
                             st.session_state["auth_target_user"] = None
                             st.rerun()
@@ -273,7 +290,7 @@ def render_auth_page():
                     st.caption("Administrator credentials are required to manage hospital staff, patient master records, and clinical systems.")
 
                     admin_password = st.text_input(
-                        "Administrator Password:",
+                        t.get("auth_admin_pw_label", "Administrator Password:"),
                         type="password",
                         placeholder="Enter administrator password",
                         key="login_step2_admin_password"
@@ -283,7 +300,7 @@ def render_auth_page():
                     col_s2_submit, col_s2_back = st.columns([1.5, 1])
 
                     with col_s2_submit:
-                        if st.button("🔐 Verify & Enter Admin Portal", type="primary", use_container_width=True, key="btn_login_step2_admin"):
+                        if st.button(t.get("auth_btn_admin_login", "🔐 Verify & Enter Admin Portal"), type="primary", use_container_width=True, key="btn_login_step2_admin"):
                             if not admin_password:
                                 st.error("⚠️ Please enter administrator password.")
                             else:
@@ -309,7 +326,7 @@ def render_auth_page():
                                     st.rerun()
 
                     with col_s2_back:
-                        if st.button("← Change Account", use_container_width=True, key="btn_login_back_admin"):
+                        if st.button(t.get("auth_btn_change_account", "← Change Account"), use_container_width=True, key="btn_login_back_admin"):
                             st.session_state["auth_login_step"] = 1
                             st.session_state["auth_target_user"] = None
                             st.rerun()
@@ -319,11 +336,11 @@ def render_auth_page():
                 # (Patients/public users never see doctor council or admin fields)
                 # ---------------------------------------------------------
                 else:
-                    portal_label = "Frontline Field Console" if user_role == "asha" else "Patient Portal"
-                    st.markdown(f"##### Sign In to {portal_label}")
+                    portal_label = t.get("role_asha", "Frontline Field Console") if user_role == "asha" else t.get("role_patient", "Patient Portal")
+                    st.markdown(f"##### {t.get('auth_patient_chal_title', 'Sign In to Patient Portal')}")
 
                     user_password = st.text_input(
-                        "Account Password:",
+                        t.get("auth_user_pw_label", "Account Password:"),
                         type="password",
                         placeholder="Enter your account password",
                         key="login_step2_user_password"
@@ -334,7 +351,7 @@ def render_auth_page():
                     col_s2_submit, col_s2_back = st.columns([1.5, 1])
 
                     with col_s2_submit:
-                        btn_label = "🚀 Sign In to Field Console" if user_role == "asha" else "🚀 Sign In to Patient Portal"
+                        btn_label = t.get("auth_btn_field_login", "🚀 Sign In to Field Console") if user_role == "asha" else t.get("auth_btn_patient_login", "🚀 Sign In to Patient Portal")
                         if st.button(btn_label, type="primary", use_container_width=True, key="btn_login_step2_user"):
                             if not user_password:
                                 st.error("⚠️ Please enter your password.")
@@ -370,7 +387,7 @@ def render_auth_page():
                                         st.rerun()
 
                     with col_s2_back:
-                        if st.button("← Change Account", use_container_width=True, key="btn_login_back_user"):
+                        if st.button(t.get("auth_btn_change_account", "← Change Account"), use_container_width=True, key="btn_login_back_user"):
                             st.session_state["auth_login_step"] = 1
                             st.session_state["auth_target_user"] = None
                             st.rerun()
@@ -379,46 +396,50 @@ def render_auth_page():
         # 2. COMPREHENSIVE SIGN UP TAB (WITH GPS & STRICT VALIDATIONS)
         # -----------------------------------------------------------------
         with tab_signup:
-            st.markdown("##### Create a New Clinical or Patient Account")
+            st.markdown(f"##### {t.get('signup_title', 'Create a New Clinical or Patient Account')}")
 
-            role_choice = st.selectbox(
-                "Select User Role:",
-                [
-                    "👤 Patient / Citizen",
-                    "👨‍⚕️ Medical Doctor (Certified RMP)",
-                    "🤝 ASHA / Frontline Health Worker"
-                ],
+            role_options = {
+                "patient": t.get("signup_role_patient", "👤 Patient / Citizen"),
+                "doctor": t.get("signup_role_doctor", "👨‍⚕️ Medical Doctor (Certified RMP)"),
+                "asha": t.get("signup_role_asha", "🤝 ASHA / Frontline Health Worker")
+            }
+
+            role_key = st.selectbox(
+                t.get("signup_role_label", "Select User Role:"),
+                list(role_options.keys()),
+                format_func=lambda k: role_options[k],
                 key="signup_role_select"
             )
+            role_choice = "Doctor" if role_key == "doctor" else ("ASHA" if role_key == "asha" else "Patient")
 
             # ---------------- Personal & Contact Details ----------------
-            st.markdown("<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 10px; margin-bottom: 4px;'>Personal & Contact Information</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 10px; margin-bottom: 4px;'>{t.get('signup_personal_sec', 'Personal & Contact Information')}</div>", unsafe_allow_html=True)
 
             # Full Name (Letters only - Strictly validated)
             new_name = st.text_input(
-                "Full Name (Alphabetic letters & spaces only):",
+                t.get("signup_fullname_label", "Full Name (Alphabetic letters & spaces only):"),
                 placeholder="e.g. Ananya Rao",
                 key="signup_name_input"
             ).strip()
 
             # 10-Digit Mobile Contact (Strictly validated)
             new_phone = st.text_input(
-                "Mobile Contact (10-Digit Indian Mobile Number):",
+                t.get("signup_mobile_label", "Mobile Contact (10-Digit Indian Mobile Number):"),
                 placeholder="e.g. 9845012345",
                 key="signup_phone_input"
             ).strip()
 
             new_email = st.text_input(
-                "Email Address (Optional):",
+                t.get("signup_email_label", "Email Address (Optional):"),
                 placeholder="e.g. ananya.rao@hospital.org",
                 key="signup_email_input"
             ).strip()
 
             col_age, col_gen = st.columns(2)
             with col_age:
-                new_age = st.number_input("Age:", min_value=1, max_value=120, value=35, step=1, key="signup_age_input")
+                new_age = st.number_input(t.get("signup_age_label", "Age:"), min_value=1, max_value=120, value=35, step=1, key="signup_age_input")
             with col_gen:
-                new_gender = st.selectbox("Gender:", ["Male", "Female", "Other", "Prefer not to disclose"], key="signup_gender_input")
+                new_gender = st.selectbox(t.get("signup_gender_label", "Gender:"), ["Male", "Female", "Other", "Prefer not to disclose"], key="signup_gender_input")
 
             # ---------------- Role-Specific Information ----------------
             doc_reg_val = None
@@ -431,9 +452,9 @@ def render_auth_page():
             asha_id_val = None
 
             if "Doctor" in role_choice:
-                st.markdown("<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>Doctor Medical Council Credentials</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>{t.get('signup_doc_sec', 'Doctor Medical Council Credentials')}</div>", unsafe_allow_html=True)
                 doc_reg_val = st.text_input(
-                    "State Medical Council / NMC Registration Number:",
+                    t.get("signup_doc_reg_label", "State Medical Council / NMC Registration Number:"),
                     placeholder="e.g. KMC-58291, MMC-41209, or NMC-2024-1234",
                     key="signup_doc_reg"
                 ).strip()
@@ -441,7 +462,7 @@ def render_auth_page():
                 col_spec, col_exp = st.columns([1.5, 1])
                 with col_spec:
                     doc_spec_val = st.selectbox(
-                        "Clinical Specialization:",
+                        t.get("signup_doc_spec_label", "Clinical Specialization:"),
                         [
                             "Pulmonology & Critical Care",
                             "Thoracic Radiology",
@@ -454,47 +475,47 @@ def render_auth_page():
                         key="signup_doc_spec"
                     )
                 with col_exp:
-                    doc_exp_val = st.number_input("Experience (Years):", min_value=0, max_value=60, value=8, step=1, key="signup_doc_exp")
+                    doc_exp_val = st.number_input(t.get("signup_doc_exp_label", "Experience (Years):"), min_value=0, max_value=60, value=8, step=1, key="signup_doc_exp")
 
                 hosp_val = st.text_input(
-                    "Hospital / Clinical Tele-ICU Center:",
+                    t.get("signup_doc_hosp_label", "Hospital / Clinical Tele-ICU Center:"),
                     placeholder="e.g. Bantwal District Hospital",
                     value="Bantwal District Hospital",
                     key="signup_doc_hosp"
                 ).strip()
 
             elif "Patient" in role_choice:
-                st.markdown("<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>Patient Clinical Demographics</div>", unsafe_allow_html=True)
-                patient_blood_group = st.selectbox("Blood Group:", ["Unknown / Not Tested", "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"], key="signup_blood_group")
+                st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>{t.get('signup_patient_sec', 'Patient Clinical Demographics')}</div>", unsafe_allow_html=True)
+                patient_blood_group = st.selectbox(t.get("signup_blood_group_label", "Blood Group:"), ["Unknown / Not Tested", "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"], key="signup_blood_group")
 
                 col_emg1, col_emg2 = st.columns(2)
                 with col_emg1:
-                    patient_emg_name = st.text_input("Emergency Contact Person:", placeholder="e.g. Suresh Kumar (Brother)", key="signup_emg_name").strip()
+                    patient_emg_name = st.text_input(t.get("signup_emg_name_label", "Emergency Contact Person:"), placeholder="e.g. Suresh Kumar (Brother)", key="signup_emg_name").strip()
                 with col_emg2:
-                    patient_emg_phone = st.text_input("Emergency Contact Mobile:", placeholder="e.g. 9448199999", key="signup_emg_phone").strip()
+                    patient_emg_phone = st.text_input(t.get("signup_emg_phone_label", "Emergency Contact Mobile:"), placeholder="e.g. 9448199999", key="signup_emg_phone").strip()
 
             elif "ASHA" in role_choice:
-                st.markdown("<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>ASHA Field Identification</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>{t.get('signup_asha_sec', 'ASHA Field Identification')}</div>", unsafe_allow_html=True)
                 asha_id_val = st.text_input(
-                    "ASHA Worker ID / Sub-Center Code:",
+                    t.get("signup_asha_id_label", "ASHA Worker ID / Sub-Center Code:"),
                     placeholder="e.g. ASHA-DK-409",
                     key="signup_asha_id"
                 ).strip()
 
                 hosp_val = st.text_input(
-                    "Primary Health Centre (PHC) Sub-Center:",
+                    t.get("signup_asha_phc_label", "Primary Health Centre (PHC) Sub-Center:"),
                     placeholder="e.g. Panemangalore PHC Sub-Center",
                     value="Panemangalore PHC Sub-Center",
                     key="signup_asha_hosp"
                 ).strip()
 
             # ---------------- Location & Geolocation Section ----------------
-            st.markdown("<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>Address & Location (GPS Auto-Detection or Manual)</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>{t.get('signup_addr_sec', 'Address & Location (GPS Auto-Detection or Manual)')}</div>", unsafe_allow_html=True)
 
             # GPS Auto-detect button
             col_gps_btn, col_gps_stat = st.columns([1.2, 2])
             with col_gps_btn:
-                if st.button("📍 Auto-Detect Location (GPS)", use_container_width=True, key="btn_detect_gps"):
+                if st.button(t.get("signup_btn_gps", "📍 Auto-Detect Location (GPS)"), use_container_width=True, key="btn_detect_gps"):
                     loc = fetch_location_by_gps()
                     st.session_state["signup_loc_city"] = loc.get("city", "Mangaluru")
                     st.session_state["signup_loc_state"] = loc.get("state", "Karnataka")
@@ -505,12 +526,12 @@ def render_auth_page():
 
             with col_gps_stat:
                 if st.session_state.get("signup_gps_triggered", False):
-                    st.markdown(f"<div style='font-size: 0.82rem; color: #166534; font-weight: 600; padding-top: 8px;'>✓ GPS Acquired: {st.session_state.get('signup_loc_city', '')}, {st.session_state.get('signup_loc_state', '')} ({st.session_state.get('signup_loc_coords', '')})</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='font-size: 0.82rem; color: #166534; font-weight: 600; padding-top: 8px;'>{t.get('signup_gps_acquired', '✓ GPS Acquired:')} {st.session_state.get('signup_loc_city', '')}, {st.session_state.get('signup_loc_state', '')} ({st.session_state.get('signup_loc_coords', '')})</div>", unsafe_allow_html=True)
                 else:
-                    st.caption("Click button above to auto-fill address from GPS, or enter manually below.")
+                    st.caption(t.get("signup_gps_caption", "Click button above to auto-fill address from GPS, or enter manually below."))
 
             address_street = st.text_input(
-                "Street Address / House No / Locality:",
+                t.get("signup_street_label", "Street Address / House No / Locality:"),
                 placeholder="e.g. Main Hospital Road, Zone 2",
                 key="signup_addr_street"
             ).strip()
@@ -518,13 +539,13 @@ def render_auth_page():
             col_c1, col_c2 = st.columns(2)
             with col_c1:
                 address_city = st.text_input(
-                    "City / Town:",
+                    t.get("signup_city_label", "City / Town:"),
                     value=st.session_state.get("signup_loc_city", "Bantwal"),
                     key="signup_addr_city"
                 ).strip()
             with col_c2:
                 address_state = st.text_input(
-                    "State / Region:",
+                    t.get("signup_state_label", "State / Region:"),
                     value=st.session_state.get("signup_loc_state", "Karnataka"),
                     key="signup_addr_state"
                 ).strip()
@@ -532,30 +553,30 @@ def render_auth_page():
             col_pin, col_coord = st.columns(2)
             with col_pin:
                 address_pincode = st.text_input(
-                    "Postal Pincode (6 Digits):",
+                    t.get("signup_pincode_label", "Postal Pincode (6 Digits):"),
                     value=st.session_state.get("signup_loc_pincode", "574211"),
                     key="signup_addr_pincode"
                 ).strip()
             with col_coord:
                 gps_coords = st.text_input(
-                    "GPS Coordinates (Lat/Long):",
+                    t.get("signup_coords_label", "GPS Coordinates (Lat/Long):"),
                     value=st.session_state.get("signup_loc_coords", "12.8913° N, 75.0347° E"),
                     key="signup_addr_coords"
                 ).strip()
 
             # ---------------- Security Credentials ----------------
-            st.markdown("<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>Account Password & Security</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>{t.get('signup_pw_sec', 'Account Password & Security')}</div>", unsafe_allow_html=True)
             col_p1, col_p2 = st.columns(2)
             with col_p1:
                 new_pw = st.text_input(
-                    "Create Password (Min 6 chars):",
+                    t.get("signup_pw_label", "Create Password (Min 6 chars):"),
                     type="password",
                     placeholder="Enter password",
                     key="signup_pw1"
                 )
             with col_p2:
                 confirm_pw = st.text_input(
-                    "Confirm Password:",
+                    t.get("signup_confirm_pw_label", "Confirm Password:"),
                     type="password",
                     placeholder="Re-enter password",
                     key="signup_pw2"
@@ -563,7 +584,7 @@ def render_auth_page():
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-            if st.button("📝 Register & Create Secured Account", type="primary", use_container_width=True, key="btn_signup_submit"):
+            if st.button(t.get("signup_btn_submit", "📝 Register & Create Secured Account"), type="primary", use_container_width=True, key="btn_signup_submit"):
                 # ================= VALIDATION PIPELINE =================
 
                 # 1. Full Name Validation (Strictly reject numbers, digits, symbols)

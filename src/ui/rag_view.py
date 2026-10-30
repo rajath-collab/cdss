@@ -5,6 +5,7 @@ Complete Frontend Implementation
 """
 import streamlit as st
 import pandas as pd
+from src.ui.translations import get_ui_text
 
 CLINICAL_GUIDELINES = [
     {
@@ -31,9 +32,12 @@ CLINICAL_GUIDELINES = [
 
 def render_rag_window(user_persona: str = "clinician"):
     """Renders the grounded clinical assistant and guideline retrieval window."""
+    ui_lang = st.session_state.get("ui_lang", "en")
+    t = get_ui_text(ui_lang)
+
     is_doctor = user_persona.lower() in ["doctor", "clinician", "admin"]
     title_icon = "🩺" if is_doctor else "💬"
-    title_text = "Clinical Diagnostic & Knowledge Assistant (RAG)" if is_doctor else "Laboratory Results Assistant"
+    title_text = t.get("rag_header_title", "Clinical Diagnostic & Knowledge Assistant (RAG)") if is_doctor else t.get("lab_assist_title", "Laboratory Results Assistant")
     accent = "#2563eb" if is_doctor else "#0d9488"
 
     st.markdown(f"""
@@ -44,20 +48,23 @@ def render_rag_window(user_persona: str = "clinician"):
                         <span>{title_icon}</span> {title_text}
                     </h3>
                     <p style="margin: 3px 0 0 0; color: #cbd5e1; font-size: 0.86rem;">
-                        Evidence-based retrieval over pathology findings, biomarkers, and peer-reviewed clinical guidelines.
+                        {t.get('rag_header_desc', 'Evidence-based retrieval over pathology findings, biomarkers, and peer-reviewed clinical guidelines.')}
                     </p>
                 </div>
                 <div style="background: rgba(255,255,255,0.12); padding: 4px 12px; border-radius: 16px; font-size: 0.78rem; font-weight: 600;">
-                    Zero-Hallucination Vector Retrieval
+                    {t.get('rag_zero_hallucination', 'Zero-Hallucination Vector Retrieval')}
                 </div>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    tab_qa, tab_guidelines = st.tabs(["💬 Interactive Q&A Assistant", "📜 Peer-Reviewed Clinical Guidelines"])
+    tab_qa, tab_guidelines = st.tabs([
+        t.get("rag_tab_qa", "💬 Interactive Q&A Assistant"),
+        t.get("rag_tab_guidelines", "📜 Peer-Reviewed Clinical Guidelines")
+    ])
 
     with tab_qa:
-        st.markdown("<p style='font-size: 0.88rem; font-weight: 600; color: #475569;'>Suggested Clinical Inquiries:</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='font-size: 0.88rem; font-weight: 600; color: #475569;'>{t.get('rag_inquiries_label', 'Suggested Clinical Inquiries:')}</p>", unsafe_allow_html=True)
         q1, q2, q3 = st.columns(3)
         b1 = q1.button("🔬 What is the diagnostic significance of CRP?", use_container_width=True)
         b2 = q2.button("🫁 What does lower lobe consolidation indicate?", use_container_width=True)

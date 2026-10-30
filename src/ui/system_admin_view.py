@@ -13,10 +13,14 @@ import streamlit as st
 import pandas as pd
 import datetime
 from src.security.database import get_db, hash_password, create_user
+from src.ui.translations import get_ui_text
 
 
 def render_system_admin_portal():
     """Renders the comprehensive Hospital Administration & Clinical Governance Portal."""
+    ui_lang = st.session_state.get("ui_lang", "en")
+    t = get_ui_text(ui_lang)
+
     user_role = st.session_state.get("user_role", "doctor")
     current_user = st.session_state.get("current_user", {})
     user_id = st.session_state.get("user_id", "Hospital Administrator")
@@ -53,7 +57,7 @@ def render_system_admin_portal():
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                 <div>
                     <div style="font-size: 0.8rem; font-weight: 700; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.8px;">
-                        🏥 Central Hospital Clinical Administration & Governance
+                        {t.get('sysadmin_banner_title', '🏥 Central Hospital Clinical Administration & Governance')}
                     </div>
                     <h2 style="margin: 4px 0 0 0; color: #f8fafc; font-size: 1.65rem;">
                         {cfg.get('hospital_name', 'Bantwal District Hospital')}
@@ -63,7 +67,7 @@ def render_system_admin_portal():
                     </p>
                 </div>
                 <div style="background: rgba(2, 132, 199, 0.25); border: 1px solid #38bdf8; padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 0.82rem; color: #e0f2fe;">
-                    🛡️ System Administrator Mode Active
+                    {t.get('sysadmin_mode_badge', '🛡️ System Administrator Mode Active')}
                 </div>
             </div>
         </div>
@@ -75,19 +79,19 @@ def render_system_admin_portal():
     c_crit = sum(1 for c in cases.values() if c.get("is_critical", False))
 
     k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Total Clinical Cases", f"{len(cases)} Cases", delta=f"{c_crit} Critical Flagged")
-    k2.metric("Tele-ICU Bed Capacity", f"{c_bed_avail} Free / {cfg['icu_beds_total']} Total", delta="78% Utilized")
-    k3.metric("Ventilator Availability", f"{c_vent_avail} Units Ready", delta=f"{cfg['ventilators_occupied']} in Use")
-    k4.metric("Medical Oxygen Reserve", f"{cfg['oxygen_reserve_pct']}% Bulk Liquid", delta="Stable Telemetry")
+    k1.metric(t.get("sysadmin_kpi_cases", "Total Clinical Cases"), f"{len(cases)} Cases", delta=f"{c_crit} Critical Flagged")
+    k2.metric(t.get("sysadmin_kpi_beds", "Tele-ICU Bed Capacity"), f"{c_bed_avail} Free / {cfg['icu_beds_total']} Total", delta="78% Utilized")
+    k3.metric(t.get("sysadmin_kpi_vents", "Ventilator Availability"), f"{c_vent_avail} Units Ready", delta=f"{cfg['ventilators_occupied']} in Use")
+    k4.metric(t.get("sysadmin_kpi_oxygen", "Medical Oxygen Reserve"), f"{cfg['oxygen_reserve_pct']}% Bulk Liquid", delta="Stable Telemetry")
 
     st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
     # 4 Main Administrative Management Tabs
     tab_cases, tab_doctors, tab_beds, tab_features = st.tabs([
-        "📁 Patient Clinical Cases Master",
-        "👨‍⚕️ Doctor & Medical Staff Roster",
-        "🛏️ Hospital Beds & Tele-ICU Tracker",
-        "⚙️ Feature Controls & Clinical AI Flags"
+        t.get("sysadmin_tab_cases", "📁 Patient Clinical Cases Master"),
+        t.get("sysadmin_tab_doctors", "👨‍⚕️ Doctor & Medical Staff Roster"),
+        t.get("sysadmin_tab_beds", "🛏️ Hospital Beds & Tele-ICU Tracker"),
+        t.get("sysadmin_tab_features", "⚙️ Feature Controls & Clinical AI Flags")
     ])
 
     # -----------------------------------------------------------------
@@ -383,3 +387,4 @@ def render_system_admin_portal():
 
 
 __all__ = ["render_system_admin_portal"]
+
