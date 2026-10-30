@@ -255,14 +255,16 @@ def render_patient_portal():
             with c_lang:
                 chosen_v_lang = st.selectbox(
                     t.get("choose_audio_lang", "Select Audio Delivery Language:"),
-                    ["ಕನ್ನಡ (Kannada)", "हिन्दी (Hindi)", "English", "தமிழ் (Tamil)", "తెలుగు (Telugu)"],
+                    ["ಕನ್ನಡ (Kannada)", "हिन्दी (Hindi)", "English", "தமிழ் (Tamil)", "తెలుగు (Telugu)", "മലയാളം (Malayalam)"],
                     key="pat_voice_sel"
                 )
             with c_play:
                 st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
                 if st.button(t.get("btn_play_audio", "🔊 Play Vernacular Audio Advisory"), key="btn_play_audio_pat"):
                     st.success(f"Playing patient voice advisory in {chosen_v_lang}...")
-                    if "ಕನ್ನಡ" in chosen_v_lang or ui_lang == "kn":
+                    if "മലയാളം" in chosen_v_lang or ui_lang == "ml":
+                        st.info("📢 'നെഞ്ചിലെ എക്സ്-റേയിലും രക്തപരിശോധനയിലും ശ്വാസകോശ അണുബാധയുടെ ലക്ഷണങ്ങൾ കാണുന്നു. ദയവായി ഉടൻ തന്നെ ഡോക്ടറെ സമീപിക്കുക.'")
+                    elif "ಕನ್ನಡ" in chosen_v_lang or ui_lang == "kn":
                         st.info("📢 'ಎದೆ ಕ್ಷ-ಕಿರಣ ಮತ್ತು ರಕ್ತ ಪರೀಕ್ಷೆ ಎರಡರಲ್ಲೂ ಶ್ವಾಸಕೋಶದ ಸೋಂಕು ಲಕ್ಷಣಗಳು ಕಂಡುಬಂದಿವೆ. ದಯವಿಟ್ಟು ತಕ್ಷಣವೇ ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.'")
                     elif "हिन्दी" in chosen_v_lang or ui_lang == "hi":
                         st.info("📢 'छाती के एक्स-रे और रक्त परीक्षण दोनों में फेफड़ों के संक्रमण के लक्षण पाए गए हैं। कृपया तुरंत डॉक्टर से परामर्श लें।'")
@@ -287,12 +289,14 @@ def render_patient_portal():
 
             if q1 or "wbc" in custom_q.lower():
                 wbc_msg = "Your observed WBC count is elevated, indicating active immune defense against infection."
-                if ui_lang == "kn":
+                if ui_lang == "ml":
+                    wbc_msg = "നിങ്ങളുടെ WBC (വെളുത്ത രക്താണുക്കൾ) എണ്ണം ഉയർന്നതാണ് (14,200). ഇത് ശരീരത്തിൽ ബാക്ടീരിയൽ അണുബാധയുള്ളതായി വ്യക്തമാക്കുന്നു."
+                elif ui_lang == "kn":
                     wbc_msg = "ನಿಮ್ಮ WBC (ಬಿಳಿ ರಕ್ತ ಕಣಗಳ) ಸಂಖ್ಯೆಯು ಹೆಚ್ಚಾಗಿದೆ (14,200). ಇದು ದೇಹದಲ್ಲಿ ಬ್ಯಾಕ್ಟೀರಿಯಾದ ಶ್ವಾಸಕೋಶದ ಸೋಂಕು ಇರುವುದನ್ನು ಸ್ಪಷ್ಟವಾಗಿ ಸೂಚಿಸುತ್ತದೆ."
                 elif ui_lang == "hi":
                     wbc_msg = "आपकी डब्ल्यूबीसी (WBC) संख्या बढ़ी हुई है (14,200)। यह इंगित करता है कि आपका शरीर सक्रिय रूप से फेफड़ों के संक्रमण से लड़ रहा है।"
                 elif ui_lang == "ta":
-                    wbc_msg = "உங்கள் WBC (வெள்ளை இரத்த அணுக்கள்) எண்ணிக்கை அதிகரித்துள்ளது (14,200). இது உடலில் பாக்டீரியா தொற்று உள்ளதை உறுதிப்படுத்துகிறது."
+                    wbc_msg = "உங்கள் WBC (வெள்ளை இரத்த அணுக்கள்) எண்ணிக்கை அதிகரித்துள்ளது (14,200). ഇത് உடலில் பாக்டீரியா தொற்று உள்ளதை உறுதிப்படுத்துகிறது."
                 elif ui_lang == "te":
                     wbc_msg = "మీ WBC (తెల్ల రక్త కణాలు) సంఖ్య పెరిగింది (14,200). ఇది శరీరంలో బ్యాక్టీరియల్ ఇన్ఫెక్షన్ ఉందని స్పష్టంగా సూచిస్తుంది."
                 st.markdown(f"""
@@ -303,7 +307,9 @@ def render_patient_portal():
                 """, unsafe_allow_html=True)
             elif q2 or "crp" in custom_q.lower():
                 crp_msg = "CRP is an acute-phase inflammatory protein. Your elevated level (48 mg/L) strongly indicates lung inflammation."
-                if ui_lang == "kn":
+                if ui_lang == "ml":
+                    crp_msg = "സി-റിയാക്ടീവ് പ്രോട്ടീൻ (CRP) 48.0 mg/L ആയി ഗുരുതരമായി ഉയർന്നിരിക്കുന്നു. ഇത് ശ്വാസകോശത്തിൽ കഠിനമായ വീക്കത്തെ സൂചിപ്പിക്കുന്നു."
+                elif ui_lang == "kn":
                     crp_msg = "ಸಿ-ರಿಯಾಕ್ಟಿವ್ ಪ್ರೊಟೀನ್ (CRP) 48.0 mg/L ಗೆ ಗಂಭೀರವಾಗಿ ಏರಿಕೆಯಾಗಿದೆ. ಇದು ಶ್ವಾಸಕೋಶದಲ್ಲಿ ತೀವ್ರ ಸೋಂಕನ್ನು ಸೂಚಿಸುತ್ತದೆ."
                 elif ui_lang == "hi":
                     crp_msg = "सीआरपी (CRP) 48.0 mg/L पर अत्यधिक बढ़ा हुआ है, जो फेफड़ों में तीव्र सूजन की पुष्टि करता है।"
@@ -319,7 +325,9 @@ def render_patient_portal():
                 """, unsafe_allow_html=True)
             elif q3 or "precaution" in custom_q.lower():
                 prec_msg = "Ensure strict bed rest, monitor oxygen saturation (SpO2) every 4 hours, and take doctor prescribed antibiotics."
-                if ui_lang == "kn":
+                if ui_lang == "ml":
+                    prec_msg = "പൂർണ്ണ വിശ്രമം എടുക്കുക, ഓരോ 4 മണിക്കൂറിലും SpO2 പരിശോധിക്കുക, ഡോക്ടർ നിർദ്ദേശിച്ച മരുന്നുകൾ മാത്രം കഴിക്കുക."
+                elif ui_lang == "kn":
                     prec_msg = "ಸಂಪೂರ್ಣ ವಿಶ್ರಾಂತಿ ತೆಗೆದುಕೊಳ್ಳಿ, ಪ್ರತಿ 4 ಗಂಟೆಗೊಮ್ಮೆ ಪಲ್ಸ್ ಆಕ್ಸಿಮೀಟರ್‌ನಿಂದ SpO2 ಪರಿಶೀಲಿಸಿ, ವೈದ್ಯರು ಬರೆದ ಔಷಧಿಯನ್ನು ಮಾತ್ರ ಸೇವಿಸಿ."
                 elif ui_lang == "hi":
                     prec_msg = "पूर्ण आराम करें, हर 4 घंटे में SpO2 की निगरानी करें, और डॉक्टर द्वारा निर्धारित दवाएं समय पर लें।"

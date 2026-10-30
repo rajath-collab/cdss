@@ -94,11 +94,12 @@ DEFAULT_PATIENT_CASES = {
 }
 
 LANGUAGES = {
-    "en": {"name": "English", "native": "English", "flag": "🇬🇧"},
-    "kn": {"name": "Kannada", "native": "ಕನ್ನಡ", "flag": "🇮🇳"},
-    "hi": {"name": "Hindi", "native": "हिन्दी", "flag": "🇮🇳"},
-    "ta": {"name": "Tamil", "native": "தமிழ்", "flag": "🇮🇳"},
-    "te": {"name": "Telugu", "native": "తెలుగు", "flag": "🇮🇳"}
+    "en": {"name": "English", "native": "English", "flag": "🌐"},
+    "kn": {"name": "Kannada", "native": "ಕನ್ನಡ (Kannada)", "flag": "🇮🇳"},
+    "hi": {"name": "Hindi", "native": "हिन्दी (Hindi)", "flag": "🇮🇳"},
+    "ta": {"name": "Tamil", "native": "தமிழ் (Tamil)", "flag": "🇮🇳"},
+    "te": {"name": "Telugu", "native": "తెలుగు (Telugu)", "flag": "🇮🇳"},
+    "ml": {"name": "Malayalam", "native": "മലയാളം (Malayalam)", "flag": "🇮🇳"}
 }
 
 def init_session_state():
