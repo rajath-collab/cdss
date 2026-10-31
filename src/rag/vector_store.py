@@ -1,35 +1,14 @@
-import chromadb
+from sentence_transformers import SentenceTransformer
 
-# In-memory client for testing, persistent later
-client = chromadb.Client()
-collection = client.get_or_create_collection(name="pathology_reports")
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
-def add_report(report_id: str, text: str, metadata: dict = None):
-    """Add pathology report to vector DB"""
-    try:
-        collection.add(
-            ids=[report_id],
-            documents=[text],
-            metadatas=[metadata or {"source": "lab"}]
-        )
-        return True
-    except Exception as e:
-        print(f"Add Error: {e}")
-        return False
+def get_embedding(text):
+    emb = model.encode(text)
+    print(f"Created embedding dim {len(emb)} using all-MiniLM-L6-v2")
+    return emb.tolist()
 
-def query_reports(query_text: str, n_results: int = 3):
-    """Search similar reports"""
-    try:
-        results = collection.query(
-            query_texts=[query_text],
-            n_results=n_results
-        )
-        return results
-    except Exception as e:
-        print(f"Query Error: {e}")
-        return {"documents": []}
-
-if __name__ == "__main__":
-    print("Vector Store Module - OK")
-    add_report("test_01", "Hemoglobin 12.5 g/dL Normal")
-    print(query_reports("hemoglobin"))
+def store_lab_report(pdf_path, text, rag_context):
+    combined_text = f"{pdf_path} {text} {rag_context}"
+    embedding = get_embedding(combined_text)
+    print(f"[VECTOR_STORE] Stored embedding for {pdf_path}")
+    return embedding

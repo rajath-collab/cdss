@@ -1,25 +1,21 @@
-def get_vernacular_summary(report_text: str, language: str = "kannada") -> str:
-    """Convert report summary to vernacular language"""
-    summaries = {
-        "kannada": f"Nimma varadiya saramsa: {report_text[:200]}",
-        "hindi": f"Aapki report ka saar: {report_text[:200]}",
-        "english": f"Your report summary: {report_text[:200]}"
-    }
-    return summaries.get(language.lower(), summaries["english"])
+def speak_lab_summary(lab_data):
+    # Create clean summary for voice
+    summary_parts = []
+    for test, details in lab_data.items():
+        value = details.get('value', 'N/A')
+        unit = details.get('unit', '')
+        status = details.get('status', '')
+        summary_parts.append(f"{test} is {value} {unit}, status {status}")
 
-def text_to_speech(text: str, lang: str = "en") -> str:
-    """Text to speech - works without gTTS also"""
-    try:
-        from gtts import gTTS
-        tts = gTTS(text=text, lang=lang, slow=False)
-        filename = f"report_{lang}.mp3"
-        tts.save(filename)
-        return f"Audio saved: {filename}"
-    except ImportError:
-        return f"[Voice Mode] {text} - (install gTTS for audio)"
-    except Exception as e:
-        return f"Voice Error: {e}"
-
-if __name__ == "__main__":
-    print("Voice Engine Module - OK")
-    print(get_vernacular_summary("Hemoglobin Normal", "kannada"))
+    clean_summary = "Lab Report Summary: " + ". ".join(summary_parts)
+    
+    print(f"[VOICE] Speaking: {clean_summary}")
+    print(f"[VOICE] Voice simulated successfully.")
+    
+    # Optional real voice - uncomment if you have pyttsx3
+    # import pyttsx3
+    # engine = pyttsx3.init()
+    # engine.say(clean_summary)
+    # engine.runAndWait()
+    
+    return clean_summary
