@@ -159,3 +159,8 @@ activemq-data/
 # Pixi
 .pixi/*
 !.pixi/config.toml
+
+firebase_config.json
+*firebase_config*.json
+smtp_config.json
+*smtp_config*.json

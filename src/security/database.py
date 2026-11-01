@@ -329,8 +329,9 @@ def get_user_by_identifier(identifier: str) -> Optional[Dict[str, Any]]:
                OR phone = ? 
                OR UPPER(reg_number) = ?
                OR LOWER(phone) = ?
+               OR LOWER(email) = ?
             LIMIT 1
-        """, (clean_lower, digits_only if len(digits_only) == 10 else clean, clean.upper(), clean_lower))
+        """, (clean_lower, digits_only if len(digits_only) == 10 else clean, clean.upper(), clean_lower, clean_lower))
         row = cursor.fetchone()
         if row:
             return dict(row)
@@ -506,13 +507,14 @@ def create_user(
     return True, "Account registered successfully!", new_user
 
 
-def record_login_attempt(username: str, is_success: bool) -> Tuple[int, bool, Optional[str]]:
+def record_login_attempt(username: str, is_success: bool, lang: str = "en") -> Tuple[int, bool, Optional[str]]:
     """
-    Handles brute-force protection:
+    Handles brute-force protection with vernacular localization:
     - If success: resets failed_attempts = 0, locked_until = NULL.
     - If failure: increments failed_attempts. If >= MAX_FAILED_ATTEMPTS, locks account for LOCKOUT_MINUTES.
     Returns: (failed_attempts, is_locked, lockout_message)
     """
+    lang_code = (lang or "en").lower()
     now = datetime.datetime.now()
 
     with get_db() as conn:
@@ -550,7 +552,18 @@ def record_login_attempt(username: str, is_success: bool) -> Tuple[int, bool, Op
                     INSERT INTO auth_audit_log (username, event_type, details)
                     VALUES (?, 'ACCOUNT_LOCKOUT', ?)
                 """, (user["username"], f"Exceeded {MAX_FAILED_ATTEMPTS} failed attempts. Account locked until {lock_time}."))
-                msg = f"⛔ Account is locked due to {new_attempts} consecutive failed attempts. Please wait {LOCKOUT_MINUTES} minutes before retrying."
+                if lang_code == "kn":
+                    msg = f"⛔ ಸತತ {new_attempts} ವಿಫಲ ಪ್ರಯತ್ನಗಳ ಕಾರಣ ಖಾತೆಯನ್ನು ಲಾಕ್ ಮಾಡಲಾಗಿದೆ. ದಯವಿಟ್ಟು {LOCKOUT_MINUTES} ನಿಮಿಷಗಳ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
+                elif lang_code == "hi":
+                    msg = f"⛔ लगातार {new_attempts} असफल प्रयासों के कारण खाता लॉक कर दिया गया है। कृपया {LOCKOUT_MINUTES} मिनट प्रतीक्षा करें।"
+                elif lang_code == "ta":
+                    msg = f"⛔ தொடர்ச்சியான {new_attempts} தோல்விகளால் கணக்கு பூட்டப்பட்டுள்ளது. {LOCKOUT_MINUTES} நிமிடங்கள் காத்திருக்கவும்."
+                elif lang_code == "te":
+                    msg = f"⛔ వరుసగా {new_attempts} విఫల ప్రయత్నాల వల్ల ఖాతా లాక్ చేయబడింది. దయచేసి {LOCKOUT_MINUTES} నిమిషాలు వేచి ఉండండి."
+                elif lang_code == "ml":
+                    msg = f"⛔ തുടർച്ചയായ {new_attempts} പരാജയപ്പെട്ട ശ്രമങ്ങൾ കാരണം അക്കൗണ്ട് പൂട്ടിയിരിക്കുന്നു. {LOCKOUT_MINUTES} മിനിറ്റ് കാത്തിരിക്കുക."
+                else:
+                    msg = f"⛔ Account is locked due to {new_attempts} consecutive failed attempts. Please wait {LOCKOUT_MINUTES} minutes before retrying."
                 return new_attempts, True, msg
             else:
                 cursor.execute("""
@@ -565,8 +578,9 @@ def record_login_attempt(username: str, is_success: bool) -> Tuple[int, bool, Op
                 return new_attempts, False, None
 
 
-def is_account_locked(user: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
-    """Checks if an account is currently locked due to exceeded attempts."""
+def is_account_locked(user: Dict[str, Any], lang: str = "en") -> Tuple[bool, Optional[str]]:
+    """Checks if an account is currently locked due to exceeded attempts with localization."""
+    lang_code = (lang or "en").lower()
     locked_until_str = user.get("locked_until")
     if not locked_until_str:
         return False, None
@@ -576,13 +590,57 @@ def is_account_locked(user: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
         now = datetime.datetime.now()
         if now < locked_until:
             rem_minutes = max(1, int((locked_until - now).total_seconds() / 60))
-            return True, f"⛔ Account locked due to security rate limiting. Please wait {rem_minutes} minute(s) before trying again."
+            if lang_code == "kn":
+                return True, f"⛔ ಭದ್ರತಾ ಕಾರಣಗಳಿಂದಾಗಿ ಖಾತೆಯನ್ನು ತಾತ್ಕಾಲಿಕವಾಗಿ ಲಾಕ್ ಮಾಡಲಾಗಿದೆ. ದಯವಿಟ್ಟು {rem_minutes} ನಿಮಿಷಗಳ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
+            elif lang_code == "hi":
+                return True, f"⛔ सुरक्षा कारणों से खाता अस्थायी रूप से लॉक है। कृपया {rem_minutes} मिनट बाद पुनः प्रयास करें।"
+            elif lang_code == "ta":
+                return True, f"⛔ கணக்கு தற்காலிகமாக பூட்டப்பட்டுள்ளது. {rem_minutes} நிமிடங்களுக்குப் பிறகு மீண்டும் முயற்சிக்கவும்."
+            elif lang_code == "te":
+                return True, f"⛔ భద్రతా పరిమితి కారణంగా ఖాతా లాక్ చేయబడింది. దయచేసి {rem_minutes} నిమిషాలు వేచి ఉండండి."
+            elif lang_code == "ml":
+                return True, f"⛔ സുരക്ഷാ കാരണങ്ങളാൽ അക്കൗണ്ട് പൂട്ടിയിരിക്കുന്നു. {rem_minutes} മിനിറ്റ് കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കുക."
+            else:
+                return True, f"⛔ Account locked due to security rate limiting. Please wait {rem_minutes} minute(s) before trying again."
         else:
             with get_db() as conn:
                 conn.execute("UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE id = ?", (user["id"],))
             return False, None
     except Exception:
         return False, None
+
+
+def update_user_password(username: str, new_password: str) -> Tuple[bool, str]:
+    """Updates user password with Bcrypt 12-round hashing and logs the audit event."""
+    if not username or not new_password:
+        return False, "Username and new password are required."
+    if len(new_password) < 6:
+        return False, "New password must be at least 6 characters long."
+
+    clean_u = username.strip().lower()
+    if clean_u in ("admin", "admin.super", "superadmin", "administrator"):
+        clean_u = "admin.chief"
+
+    user = get_user_by_username(clean_u)
+    if not user:
+        return False, f"User '{username}' not found in registered accounts."
+
+    new_hash = hash_password(new_password)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users 
+            SET password_hash = ?, failed_attempts = 0, locked_until = NULL 
+            WHERE LOWER(username) = ?
+        """, (new_hash, clean_u))
+
+        cursor.execute("""
+            INSERT INTO auth_audit_log (username, event_type, details)
+            VALUES (?, 'PASSWORD_RESET', 'Password successfully reset via verified recovery flow')
+        """, (clean_u,))
+        conn.commit()
+
+    return True, "Password successfully updated!"
 
 
 def get_audit_logs(limit: int = 15):
@@ -608,5 +666,6 @@ __all__ = [
     "create_user",
     "record_login_attempt",
     "is_account_locked",
-    "get_audit_logs"
+    "get_audit_logs",
+    "update_user_password"
 ]
