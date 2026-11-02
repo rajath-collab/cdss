@@ -10,6 +10,7 @@ Provides instantaneous, zero-latency medical voice briefings explaining:
 
 import io
 import json
+import textwrap
 import streamlit as st
 
 try:
@@ -115,41 +116,39 @@ def render_voice_briefing_widget(
     lang_code = (lang or "en").lower().strip()
     voice_lang_tag = "kn-IN" if lang_code == "kn" else ("hi-IN" if lang_code == "hi" else "en-US")
 
-    st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1px solid #38bdf8; border-radius: 12px; padding: 16px 20px; margin-top: 14px; margin-bottom: 12px; color: #f8fafc; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.15);">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 1.4rem;">🎙️</span>
-                    <div>
-                        <div style="font-weight: 800; font-size: 0.95rem; color: #38bdf8; letter-spacing: -0.3px;">
-                            {title}
-                        </div>
-                        <div style="font-size: 0.74rem; color: #94a3b8;">
-                            AI-Synthesized Voice Explanation of Radiograph & Grad-CAM Focal Heatmap
-                        </div>
-                    </div>
+    html_code = f"""
+<div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1px solid #38bdf8; border-radius: 12px; padding: 16px 20px; margin-top: 14px; margin-bottom: 12px; color: #f8fafc; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.15);">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.4rem;">🎙️</span>
+            <div>
+                <div style="font-weight: 800; font-size: 0.95rem; color: #38bdf8; letter-spacing: -0.3px;">
+                    {title}
                 </div>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22c55e;"></span>
-                    <span style="font-size: 0.75rem; color: #38bdf8; font-weight: 700;">Audio Engine Ready ({voice_lang_tag})</span>
+                <div style="font-size: 0.74rem; color: #94a3b8;">
+                    AI-Synthesized Voice Explanation of Radiograph & Grad-CAM Focal Heatmap
                 </div>
-            </div>
-
-            <!-- Voice Transcript Card -->
-            <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 8px; padding: 12px 14px; font-size: 0.85rem; color: #cbd5e1; line-height: 1.55; max-height: 140px; overflow-y: auto;">
-                <span style="color: #38bdf8; font-weight: 700; margin-right: 6px;">[Audio Transcript]:</span>
-                <span>{script_text}</span>
             </div>
         </div>
-    """, unsafe_allow_html=True)
+        <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22c55e;"></span>
+            <span style="font-size: 0.75rem; color: #38bdf8; font-weight: 700;">Audio Engine Ready ({voice_lang_tag})</span>
+        </div>
+    </div>
+    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 8px; padding: 12px 14px; font-size: 0.85rem; color: #cbd5e1; line-height: 1.55; max-height: 140px; overflow-y: auto;">
+        <span style="color: #38bdf8; font-weight: 700; margin-right: 6px;">[Audio Transcript]:</span>
+        <span>{script_text}</span>
+    </div>
+</div>
+"""
+    st.markdown(textwrap.dedent(html_code).strip(), unsafe_allow_html=True)
 
     # Generate real audible MP3 audio
     with st.spinner("🔊 Synthesizing clinical audio..."):
         audio_data = synthesize_clinical_audio(script_text, lang=lang_code)
 
     if audio_data:
-        st.markdown(f"<div style='font-size: 0.82rem; font-weight: 700; color: #0284c7; margin-bottom: 4px;'>▶️ Listen Aloud (Press Play below):</div>", unsafe_allow_html=True)
-        # Native Streamlit Audio Player that plays out loud from laptop speakers
+        st.markdown("<div style='font-size: 0.82rem; font-weight: 700; color: #0284c7; margin-bottom: 4px;'>▶️ Listen Aloud (Press Play below):</div>", unsafe_allow_html=True)
         st.audio(audio_data, format="audio/mp3", autoplay=False)
     else:
         st.info("ℹ️ Native Web Speech API Audio active.")

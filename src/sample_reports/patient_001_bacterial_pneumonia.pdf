@@ -1,0 +1,55 @@
+%PDF-1.4
+1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
+2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
+3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >> endobj
+5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> endobj
+6 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj
+4 0 obj << /Length 1200 >> stream
+BT
+/F1 16 Tf
+50 740 Td (KIT MULTISPECIALTY HOSPITAL & DIAGNOSTICS) Tj
+/F2 10 Tf
+0 -18 Td (Point-of-Care Clinical Pathology Slip | Accredited Laboratory Services) Tj
+0 -12 Td (Mangalore, Karnataka - 575001) Tj
+0 -25 Td (========================================================================) Tj
+/F1 11 Tf
+0 -20 Td (PATIENT DETAILS) Tj
+/F2 10 Tf
+0 -15 Td (Patient Name: Ramesh Bhat        Patient ID: PID-9021) Tj
+0 -15 Td (Age/Gender: 46 Y / Male              Collection Date: 18-Oct-2026) Tj
+0 -15 Td (Referred By: Dr. A. K. Rao (MD Med)   Specimen: Whole Blood / Serum) Tj
+0 -20 Td (------------------------------------------------------------------------------------------------------------------------) Tj
+/F1 11 Tf
+0 -18 Td (INVESTIGATION                      RESULT           REFERENCE RANGE        UNIT) Tj
+/F2 10 Tf
+0 -15 Td (------------------------------------------------------------------------------------------------------------------------) Tj
+0 -16 Td (Total Leukocyte Count (TLC/WBC)    15,400           4,000 - 11,000         cells/uL) Tj
+0 -16 Td (Neutrophils (Polymorphs)           84.5%           40.0 - 75.0            %) Tj
+0 -16 Td (Lymphocytes                        11.2%           20.0 - 45.0            %) Tj
+0 -16 Td (C-Reactive Protein (Quantitative)  42.8             0.0 - 6.0              mg/L) Tj
+0 -16 Td (Erythrocyte Sedimentation Rate(ESR) 38               0 - 20                 mm/hr) Tj
+0 -16 Td (Platelet Count                     2.8              1.5 - 4.5              lakhs/uL) Tj
+0 -16 Td (Hemoglobin (Hb)                    13.2             12.0 - 17.5            g/dL) Tj
+0 -25 Td (========================================================================) Tj
+/F1 11 Tf
+0 -18 Td (PATHOLOGIST CLINICAL REMARKS) Tj
+/F2 10 Tf
+0 -15 Td (Marked polymorphonuclear leukocytosis with significant CRP elevation. Correlate with chest radiography for acute consolidation.) Tj
+0 -40 Td (Report Verified By: Dr. S. Shenoy, Consultant Pathologist, KMC / KIT) Tj
+0 -15 Td (Electronic report generated for Multimodal CDSS Decision Augmentation.) Tj
+ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000305 00000 n 
+0000000219 00000 n 
+0000000262 00000 n 
+trailer << /Size 7 /Root 1 0 R >>
+startxref
+1600
+%%EOF
