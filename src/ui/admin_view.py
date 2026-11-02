@@ -193,16 +193,30 @@ def render_admin_portal():
         # Multimodal Clinical Voice Briefing (Report + Grad-CAM Heatmap Explanation)
         from src.ui.voice_service import generate_clinical_voice_script, render_voice_briefing_widget
         cur_lang = st.session_state.get("ui_lang", "en")
+        adm_v_lang = st.selectbox(
+            "Voice Language (ಧ್ವನಿ ಭಾಷೆ):",
+            ["English", "ಕನ್ನಡ (Kannada)", "हिन्दी (Hindi)", "தமிழ் (Tamil)", "తెలుగు (Telugu)"],
+            key=f"adm_audio_lang_{selected_cid}"
+        )
+        lang_code_map = {
+            "English": "en",
+            "ಕನ್ನಡ (Kannada)": "kn",
+            "हिन्दी (Hindi)": "hi",
+            "தமிழ் (Tamil)": "ta",
+            "తెలుగు (Telugu)": "te"
+        }
+        active_voice_lang = lang_code_map.get(adm_v_lang, cur_lang)
+
         voice_text = generate_clinical_voice_script(
-            patient_name=active_case.get("name", "Patient"),
+            patient_name=active_case.get("patient_name") or active_case.get("name", "Patient"),
             condition=active_case.get("xray_finding", "Pneumonia"),
             confidence=active_case.get("xray_confidence", 94.2),
             gradcam_focus="right lower basal lobe" if "pneumonia" in case_finding else ("apical perihilar airspace" if "tb" in case_finding else "clear lung parenchyma"),
             abnormal_biomarkers=[k for k, v in active_case.get("lab_biomarkers", {}).items() if str(v.get("status", "")).upper() not in ["NORMAL", "RECORDED"]],
             triage_level="Level 2 (Urgent Multimodal Triage)",
-            lang=cur_lang
+            lang=active_voice_lang
         )
-        render_voice_briefing_widget(voice_text, key_prefix="admin_diag_voice", lang=cur_lang)
+        render_voice_briefing_widget(voice_text, key_prefix=f"admin_diag_voice_{selected_cid}_{active_voice_lang}", lang=active_voice_lang)
 
     with col_rag:
         st.markdown(f"#### {t.get('doc_biomarker_title', '🧪 Pathology Biomarker Extraction & Analysis')}")
