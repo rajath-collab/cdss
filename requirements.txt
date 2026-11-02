@@ -1,5 +1,27 @@
-# MedFuse-AI Frontend Dependencies
-streamlit>=1.35.0
+# MedFuse-AI / CDSS - Multimodal Clinical Decision Support System
+# Production Dependencies
+
+# Deep Learning Vision Backbone & Explainable AI (XAI)
+torch>=2.2.0
+torchvision>=0.17.0
+opencv-python>=4.8.0
 pillow>=10.0.0
-pandas>=2.0.0
 numpy>=1.24.0
+
+# Document Processing & Vector Store (RAG Pipeline)
+pymupdf>=1.23.0          # PyMuPDF (fitz) for PDF clinical lab report ingestion
+pypdf>=4.0.0             # Secondary PDF parser fallback
+chromadb>=0.4.22         # Persistent local vector database
+sentence-transformers>=2.3.0 # Dense text embeddings (all-MiniLM-L6-v2)
+
+# Vernacular Audio Synthesis & Internationalization (i18n)
+gTTS>=2.5.0              # Google Text-to-Speech (English, Kannada, Hindi, Tamil, Telugu)
+
+# Web Application & Interactive UI Framework
+streamlit>=1.35.0        # Multi-persona clinical dashboard
+pandas>=2.0.0            # Tabular biomarker and telemetry analytics
+requests>=2.31.0         # Network protocol handling
+
+# Enterprise Security, Cryptography & Governance
+bcrypt>=4.0.0            # PBKDF2/bcrypt adaptive password hashing
+python-dotenv>=1.0.0     # Zero-leakage environment configuration
