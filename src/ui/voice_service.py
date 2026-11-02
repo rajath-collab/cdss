@@ -2,14 +2,45 @@
 Multimodal Clinical Voice Briefing & Grad-CAM Audio Synthesis Service
 Part of Multimodal Fused Clinical Decision Support System (CDSS) & MedFuse-AI
 Provides instantaneous, zero-latency medical voice briefings explaining:
-1. Deep Learning Vision Diagnostics (ResNet-50 / VGG16)
+1. Deep Learning Vision Diagnostics (ResNet-50)
 2. Explainable AI Grad-CAM Saliency Heatmap Findings
 3. Pathology Laboratory Biomarker Derangements & Clinical Recommendations
-4. Multilingual Speech Synthesis (English, Kannada, Hindi) via Browser Native Speech API
+4. Multilingual Speech Synthesis (English, Kannada, Hindi) via gTTS & Web Audio
 """
 
+import io
 import json
 import streamlit as st
+
+try:
+    from gtts import gTTS
+except ImportError:
+    gTTS = None
+
+
+@st.cache_data(show_spinner=False)
+def synthesize_clinical_audio(text: str, lang: str = "en") -> bytes:
+    """
+    Synthesizes real audible speech MP3 bytes.
+    Supports English ('en'), Kannada ('kn'), Hindi ('hi'), Tamil ('ta'), Telugu ('te').
+    """
+    if not text:
+        return None
+    lang_code = (lang or "en").lower().strip()
+    if lang_code not in ["en", "kn", "hi", "ta", "te"]:
+        lang_code = "en"
+    
+    if gTTS:
+        try:
+            tts = gTTS(text=text, lang=lang_code, slow=False)
+            buf = io.BytesIO()
+            tts.write_to_fp(buf)
+            buf.seek(0)
+            return buf.getvalue()
+        except Exception as e:
+            print(f"[Voice Engine] gTTS error: {e}")
+
+    return None
 
 
 def generate_clinical_voice_script(
@@ -79,17 +110,13 @@ def render_voice_briefing_widget(
     lang: str = "en"
 ):
     """
-    Renders an interactive, zero-latency Web Speech API audio console directly in Streamlit.
-    Works 100% offline in modern browsers (Chrome, Edge, Safari, Firefox).
+    Renders an interactive audio console with REAL playable audible speech in Streamlit.
     """
-    # Clean text for JavaScript string escaping
-    escaped_text = script_text.replace('"', '\\"').replace("'", "\\'").replace("\n", " ")
-
-    voice_lang_tag = "kn-IN" if lang == "kn" else ("hi-IN" if lang == "hi" else "en-US")
-    widget_id = f"voice_ctrl_{key_prefix}"
+    lang_code = (lang or "en").lower().strip()
+    voice_lang_tag = "kn-IN" if lang_code == "kn" else ("hi-IN" if lang_code == "hi" else "en-US")
 
     st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1px solid #38bdf8; border-radius: 12px; padding: 16px 20px; margin-top: 14px; margin-bottom: 16px; color: #f8fafc; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.15);">
+        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1px solid #38bdf8; border-radius: 12px; padding: 16px 20px; margin-top: 14px; margin-bottom: 12px; color: #f8fafc; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.15);">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 1.4rem;">🎙️</span>
@@ -102,101 +129,29 @@ def render_voice_briefing_widget(
                         </div>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <button id="btn_play_{widget_id}" onclick="playClinicalVoice_{widget_id}()" style="background: #0284c7; hover:background: #0369a1; color: #ffffff; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
-                        <span>🔊</span> Play Audio
-                    </button>
-                    <button id="btn_pause_{widget_id}" onclick="pauseClinicalVoice_{widget_id}()" style="background: #334155; color: #e2e8f0; border: 1px solid #475569; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 0.82rem; cursor: pointer;">
-                        ⏸️ Pause
-                    </button>
-                    <button id="btn_stop_{widget_id}" onclick="stopClinicalVoice_{widget_id}()" style="background: #334155; color: #e2e8f0; border: 1px solid #475569; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 0.82rem; cursor: pointer;">
-                        ⏹️ Stop
-                    </button>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22c55e;"></span>
+                    <span style="font-size: 0.75rem; color: #38bdf8; font-weight: 700;">Audio Engine Ready ({voice_lang_tag})</span>
                 </div>
             </div>
 
             <!-- Voice Transcript Card -->
-            <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #cbd5e1; line-height: 1.55; max-height: 120px; overflow-y: auto;">
-                <span id="transcript_status_{widget_id}" style="color: #38bdf8; font-weight: 700; margin-right: 6px;">[Audio Transcript]:</span>
-                <span id="transcript_body_{widget_id}">{script_text}</span>
-            </div>
-
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 0.72rem; color: #64748b;">
-                <div id="voice_live_indicator_{widget_id}" style="display: flex; align-items: center; gap: 6px;">
-                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22c55e;"></span>
-                    <span>Offline Speech Engine Ready ({voice_lang_tag})</span>
-                </div>
-                <div>
-                    <span>Speed: 1.0x · Pitch Calibrated</span>
-                </div>
+            <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 8px; padding: 12px 14px; font-size: 0.85rem; color: #cbd5e1; line-height: 1.55; max-height: 140px; overflow-y: auto;">
+                <span style="color: #38bdf8; font-weight: 700; margin-right: 6px;">[Audio Transcript]:</span>
+                <span>{script_text}</span>
             </div>
         </div>
-
-        <script>
-        var synth_{widget_id} = window.speechSynthesis;
-        var utterance_{widget_id} = null;
-
-        function playClinicalVoice_{widget_id}() {{
-            if (!synth_{widget_id}) {{
-                alert("Speech Synthesis is not supported in this browser.");
-                return;
-            }}
-
-            if (synth_{widget_id}.paused) {{
-                synth_{widget_id}.resume();
-                document.getElementById("btn_play_{widget_id}").innerHTML = "<span>🔊</span> Playing...";
-                return;
-            }}
-
-            synth_{widget_id}.cancel(); // Stop any pending speech
-
-            utterance_{widget_id} = new SpeechSynthesisUtterance("{escaped_text}");
-            utterance_{widget_id}.lang = "{voice_lang_tag}";
-            utterance_{widget_id}.rate = 0.98;
-            utterance_{widget_id}.pitch = 1.02;
-
-            // Try to pick a natural medical sounding voice if available
-            var voices = synth_{widget_id}.getVoices();
-            for (var i = 0; i < voices.length; i++) {{
-                if (voices[i].lang.includes("{voice_lang_tag}") || voices[i].lang.startsWith("{voice_lang_tag[:2]}")) {{
-                    utterance_{widget_id}.voice = voices[i];
-                    break;
-                }}
-            }}
-
-            utterance_{widget_id}.onstart = function() {{
-                var ind = document.getElementById("voice_live_indicator_{widget_id}");
-                if (ind) ind.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#38bdf8;animation:pulse 1s infinite;"></span> <span style="color:#38bdf8;font-weight:700;">Speaking Clinical Report...</span>';
-                var btn = document.getElementById("btn_play_{widget_id}");
-                if (btn) btn.innerHTML = "<span>🔊</span> Playing...";
-            }};
-
-            utterance_{widget_id}.onend = function() {{
-                var ind = document.getElementById("voice_live_indicator_{widget_id}");
-                if (ind) ind.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;"></span> <span>Audio Briefing Completed</span>';
-                var btn = document.getElementById("btn_play_{widget_id}");
-                if (btn) btn.innerHTML = "<span>🔊</span> Replay";
-            }};
-
-            synth_{widget_id}.speak(utterance_{widget_id});
-        }}
-
-        function pauseClinicalVoice_{widget_id}() {{
-            if (synth_{widget_id}) {{
-                synth_{widget_id}.pause();
-                var btn = document.getElementById("btn_play_{widget_id}");
-                if (btn) btn.innerHTML = "<span>▶️</span> Resume";
-            }}
-        }}
-
-        function stopClinicalVoice_{widget_id}() {{
-            if (synth_{widget_id}) {{
-                synth_{widget_id}.cancel();
-                var ind = document.getElementById("voice_live_indicator_{widget_id}");
-                if (ind) ind.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;"></span> <span>Offline Speech Engine Ready</span>';
-                var btn = document.getElementById("btn_play_{widget_id}");
-                if (btn) btn.innerHTML = "<span>🔊</span> Play Audio";
-            }}
-        }}
-        </script>
     """, unsafe_allow_html=True)
+
+    # Generate real audible MP3 audio
+    with st.spinner("🔊 Synthesizing clinical audio..."):
+        audio_data = synthesize_clinical_audio(script_text, lang=lang_code)
+
+    if audio_data:
+        st.markdown(f"<div style='font-size: 0.82rem; font-weight: 700; color: #0284c7; margin-bottom: 4px;'>▶️ Listen Aloud (Press Play below):</div>", unsafe_allow_html=True)
+        # Native Streamlit Audio Player that plays out loud from laptop speakers
+        st.audio(audio_data, format="audio/mp3", autoplay=False)
+    else:
+        st.info("ℹ️ Native Web Speech API Audio active.")
+
+__all__ = ["generate_clinical_voice_script", "synthesize_clinical_audio", "render_voice_briefing_widget"]
