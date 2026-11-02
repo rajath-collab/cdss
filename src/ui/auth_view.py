@@ -156,8 +156,47 @@ def render_restricted_admin_portal():
                 key="recov_adm_otp_input"
             ).strip()
 
-            new_adm_pw1 = st.text_input(t.get("admin_new_pw_label", "New Administrator Password:"), type="password", placeholder=t.get("pw_min_placeholder", "Min 6 characters"), key="recov_adm_pw1")
+            new_adm_pw1 = st.text_input(t.get("admin_new_pw_label", "New Administrator Password:"), type="password", placeholder=t.get("pw_placeholder_req", "e.g. MedFuse@2026"), key="recov_adm_pw1")
             new_adm_pw2 = st.text_input(t.get("admin_confirm_pw_label", "Confirm New Password:"), type="password", placeholder=t.get("pw_confirm_placeholder", "Confirm password"), key="recov_adm_pw2")
+
+            # Instant Real-Time Password Complexity Checklist & Matching Feedback
+            if new_adm_pw1 or new_adm_pw2:
+                cx_adm = check_password_complexity(new_adm_pw1)
+                c_len = "#16a34a" if cx_adm["min_length"] else "#94a3b8"
+                c_upp = "#16a34a" if cx_adm["has_upper"] else "#94a3b8"
+                c_low = "#16a34a" if cx_adm["has_lower"] else "#94a3b8"
+                c_num = "#16a34a" if cx_adm["has_number"] else "#94a3b8"
+                c_spe = "#16a34a" if cx_adm["has_special"] else "#94a3b8"
+
+                i_len = "✓" if cx_adm["min_length"] else "○"
+                i_upp = "✓" if cx_adm["has_upper"] else "○"
+                i_low = "✓" if cx_adm["has_lower"] else "○"
+                i_num = "✓" if cx_adm["has_number"] else "○"
+                i_spe = "✓" if cx_adm["has_special"] else "○"
+
+                st.markdown(f'''
+                    <div style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px 14px; margin-top: 4px; margin-bottom: 10px;">
+                        <div style="font-size: 0.74rem; font-weight: 700; color: #38bdf8; text-transform: uppercase; margin-bottom: 6px;">
+                            {t.get('pw_req_title', '🛡️ Password Security Criteria (Required for Best Protection):')}
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.78rem;">
+                            <span style="color: {c_len}; font-weight: 700;">{i_len} {t.get('pw_rule_len', 'Min 8 Chars')}</span>
+                            <span style="color: {c_upp}; font-weight: 700;">{i_upp} {t.get('pw_rule_upper', 'Uppercase (A-Z)')}</span>
+                            <span style="color: {c_low}; font-weight: 700;">{i_low} {t.get('pw_rule_lower', 'Lowercase (a-z)')}</span>
+                            <span style="color: {c_num}; font-weight: 700;">{i_num} {t.get('pw_rule_num', 'Number (0-9)')}</span>
+                            <span style="color: {c_spe}; font-weight: 700;">{i_spe} {t.get('pw_rule_special', 'Special Symbol (!@#$)')}</span>
+                        </div>
+                    </div>
+                ''', unsafe_allow_html=True)
+
+                if not all(cx_adm.values()) and new_adm_pw1:
+                    _, missing_err = validate_password(new_adm_pw1, lang=ui_lang)
+                    st.markdown(f"<div style='color: #f59e0b; font-size: 0.82rem; font-weight: 600; margin-top: 2px; margin-bottom: 10px; background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; border-radius: 6px; padding: 6px 12px;'>{missing_err}</div>", unsafe_allow_html=True)
+                elif new_adm_pw2:
+                    if new_adm_pw1 != new_adm_pw2:
+                        st.markdown(f"<div style='color: #f87171; font-size: 0.82rem; font-weight: 700; margin-top: 2px; margin-bottom: 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 6px; padding: 6px 12px;'>{t.get('badge_pw_mismatch', '❌ Passwords do not match! Please enter identical passwords in both fields.')}</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<div style='color: #4ade80; font-size: 0.82rem; font-weight: 700; margin-top: 2px; margin-bottom: 10px; background: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e; border-radius: 6px; padding: 6px 12px;'>✓ All password security requirements met & passwords match successfully!</div>", unsafe_allow_html=True)
 
             st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
@@ -510,8 +549,47 @@ def render_auth_page():
                     key="recov_pat_otp_input"
                 ).strip()
 
-                new_pat_pw1 = st.text_input(t.get("auth_new_pw_label", "New Password:"), type="password", placeholder=t.get("pw_min_placeholder", "Min 6 characters"), key="recov_pat_pw1")
+                new_pat_pw1 = st.text_input(t.get("auth_new_pw_label", "New Password:"), type="password", placeholder=t.get("pw_placeholder_req", "e.g. MedFuse@2026"), key="recov_pat_pw1")
                 new_pat_pw2 = st.text_input(t.get("auth_confirm_pw_label", "Confirm New Password:"), type="password", placeholder=t.get("pw_confirm_placeholder", "Confirm password"), key="recov_pat_pw2")
+
+                # Instant Real-Time Password Complexity Checklist & Matching Feedback
+                if new_pat_pw1 or new_pat_pw2:
+                    cx_pat = check_password_complexity(new_pat_pw1)
+                    c_len = "#16a34a" if cx_pat["min_length"] else "#94a3b8"
+                    c_upp = "#16a34a" if cx_pat["has_upper"] else "#94a3b8"
+                    c_low = "#16a34a" if cx_pat["has_lower"] else "#94a3b8"
+                    c_num = "#16a34a" if cx_pat["has_number"] else "#94a3b8"
+                    c_spe = "#16a34a" if cx_pat["has_special"] else "#94a3b8"
+
+                    i_len = "✓" if cx_pat["min_length"] else "○"
+                    i_upp = "✓" if cx_pat["has_upper"] else "○"
+                    i_low = "✓" if cx_pat["has_lower"] else "○"
+                    i_num = "✓" if cx_pat["has_number"] else "○"
+                    i_spe = "✓" if cx_pat["has_special"] else "○"
+
+                    st.markdown(f'''
+                        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-top: 4px; margin-bottom: 10px;">
+                            <div style="font-size: 0.74rem; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">
+                                {t.get('pw_req_title', '🛡️ Password Security Criteria (Required for Best Protection):')}
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.78rem;">
+                                <span style="color: {c_len}; font-weight: 700;">{i_len} {t.get('pw_rule_len', 'Min 8 Chars')}</span>
+                                <span style="color: {c_upp}; font-weight: 700;">{i_upp} {t.get('pw_rule_upper', 'Uppercase (A-Z)')}</span>
+                                <span style="color: {c_low}; font-weight: 700;">{i_low} {t.get('pw_rule_lower', 'Lowercase (a-z)')}</span>
+                                <span style="color: {c_num}; font-weight: 700;">{i_num} {t.get('pw_rule_num', 'Number (0-9)')}</span>
+                                <span style="color: {c_spe}; font-weight: 700;">{i_spe} {t.get('pw_rule_special', 'Special Symbol (!@#$)')}</span>
+                            </div>
+                        </div>
+                    ''', unsafe_allow_html=True)
+
+                    if not all(cx_pat.values()) and new_pat_pw1:
+                        _, missing_err = validate_password(new_pat_pw1, lang=ui_lang)
+                        st.markdown(f"<div style='color: #b45309; font-size: 0.82rem; font-weight: 600; margin-top: 2px; margin-bottom: 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 6px 12px;'>{missing_err}</div>", unsafe_allow_html=True)
+                    elif new_pat_pw2:
+                        if new_pat_pw1 != new_pat_pw2:
+                            st.markdown(f"<div style='color: #b91c1c; font-size: 0.82rem; font-weight: 700; margin-top: 2px; margin-bottom: 10px; background: #fef2f2; border: 1px solid #f87171; border-radius: 6px; padding: 6px 12px;'>{t.get('badge_pw_mismatch', '❌ Passwords do not match! Please enter identical passwords in both fields.')}</div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"<div style='color: #15803d; font-size: 0.82rem; font-weight: 700; margin-top: 2px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 6px 12px;'>✓ All password security requirements met & passwords match successfully!</div>", unsafe_allow_html=True)
 
                 st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
