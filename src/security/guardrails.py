@@ -304,9 +304,36 @@ def validate_doctor_reg(reg_number: str) -> Tuple[bool, str, str]:
     return True, "", clean_reg
 
 
+def check_password_complexity(password: str) -> Dict[str, bool]:
+    """
+    Evaluates individual password complexity criteria for real-time visual UI checklist.
+    Criteria:
+      - min_length: >= 8 characters
+      - has_upper: at least 1 uppercase letter (A-Z)
+      - has_lower: at least 1 lowercase letter (a-z)
+      - has_number: at least 1 numerical digit (0-9)
+      - has_special: at least 1 special symbol (!@#$%^&*...)
+    """
+    p = password or ""
+    return {
+        "min_length": len(p) >= 8,
+        "has_upper": any(c.isupper() for c in p),
+        "has_lower": any(c.islower() for c in p),
+        "has_number": any(c.isdigit() for c in p),
+        "has_special": any(not c.isalnum() and not c.isspace() for c in p),
+    }
+
+
 def validate_password(password: str, confirm_password: str = None, lang: str = "en") -> Tuple[bool, str]:
     """
-    Validates password length, security, and checks confirm_password matching with localization.
+    Validates password complexity for clinical-grade security:
+      - Minimum 8 characters
+      - At least 1 uppercase letter (A-Z)
+      - At least 1 lowercase letter (a-z)
+      - At least 1 numerical digit (0-9)
+      - At least 1 special character (!@#$%^&*...)
+      - Matching confirm_password (if provided)
+    Full multi-lingual support across en, kn, hi, ta, te, ml.
     """
     lang_code = (lang or "en").lower()
 
@@ -321,32 +348,74 @@ def validate_password(password: str, confirm_password: str = None, lang: str = "
         }
         return False, msgs.get(lang_code, msgs["en"])
 
-    if len(password) < 6:
+    if len(password) < 8:
         msgs = {
-            "kn": f"ಪಾಸ್‌ವರ್ಡ್ ಕನಿಷ್ಠ 6 ಅಕ್ಷರಗಳನ್ನು ಹೊಂದಿರಬೇಕು (ಪ್ರಸ್ತುತ {len(password)} ಅಕ್ಷರಗಳು).",
-            "hi": f"पासवर्ड कम से कम 6 अक्षरों का होना चाहिए (वर्तमान में {len(password)} अक्षर)।",
-            "ta": f"கடவுச்சொல் குறைந்தது 6 எழுத்துக்கள் நீளமாக இருக்க வேண்டும் ({len(password)} எழுத்துக்கள் உள்ளன).",
-            "te": f"పాస్‌వర్డ్ కనీసం 6 అక్షరాలు ఉండాలి (ప్రస్తుతం {len(password)} అక్షరాలు).",
-            "ml": f"പാസ്‌വേഡിന് കുറഞ്ഞത് 6 അക്ഷരങ്ങൾ നീളം ഉണ്ടായിരിക്കണം ({len(password)} അക്ഷരങ്ങൾ ഉണ്ട്).",
-            "en": f"Password must be at least 6 characters long (currently {len(password)} characters)."
+            "kn": f"⚠️ ಪಾಸ್‌ವರ್ಡ್ ಕನಿಷ್ಠ 8 ಅಕ್ಷರಗಳನ್ನು ಹೊಂದಿರಬೇಕು (ಪ್ರಸ್ತುತ {len(password)} ಅಕ್ಷರಗಳು).",
+            "hi": f"⚠️ पासवर्ड कम से कम 8 अक्षरों का होना चाहिए (वर्तमान में {len(password)} अक्षर)।",
+            "ta": f"⚠️ கடவுச்சொல் குறைந்தது 8 எழுத்துக்கள் நீளமாக இருக்க வேண்டும் ({len(password)} எழுத்துக்கள் உள்ளன).",
+            "te": f"⚠️ పాస్‌వర్డ్ కనీసం 8 అక్షరాలు ఉండాలి (ప్రస్తుతం {len(password)} అక్షరాలు).",
+            "ml": f"⚠️ പാസ്‌വേഡിന് കുറഞ്ഞത് 8 അക്ഷരങ്ങൾ നീളം ഉണ്ടായിരിക്കണം ({len(password)} അക്ഷരങ്ങൾ ഉണ്ട്).",
+            "en": f"⚠️ Password must be at least 8 characters long (currently {len(password)} characters)."
+        }
+        return False, msgs.get(lang_code, msgs["en"])
+
+    if not any(c.isupper() for c in password):
+        msgs = {
+            "kn": "⚠️ ಪಾಸ್‌ವರ್ಡ್ ಕನಿಷ್ಠ ಒಂದು ದೊಡ್ಡಕ್ಷರವನ್ನು (A-Z) ಹೊಂದಿರಬೇಕು.",
+            "hi": "⚠️ पासवर्ड में कम से कम एक बड़ा अक्षर (A-Z) होना चाहिए।",
+            "ta": "⚠️ கடவுச்சொல்லில் குறைந்தது ஒரு பெரிய எழுத்து (A-Z) இருக்க வேண்டும்.",
+            "te": "⚠️ పాస్‌వర్డ్‌లో కనీసం ఒక పెద్ద అక్షరం (A-Z) ఉండాలి.",
+            "ml": "⚠️ പാസ്‌വേഡിൽ കുറഞ്ഞത് ഒരു വലിയ അക്ഷരം (A-Z) ഉണ്ടായിരിക്കണം.",
+            "en": "⚠️ Password must contain at least one uppercase letter (A-Z)."
+        }
+        return False, msgs.get(lang_code, msgs["en"])
+
+    if not any(c.islower() for c in password):
+        msgs = {
+            "kn": "⚠️ ಪಾಸ್‌ವರ್ಡ್ ಕನಿಷ್ಠ ಒಂದು ಸಣ್ಣಕ್ಷರವನ್ನು (a-z) ಹೊಂದಿರಬೇಕು.",
+            "hi": "⚠️ पासवर्ड में कम से कम एक छोटा अक्षर (a-z) होना चाहिए।",
+            "ta": "⚠️ கடவுச்சொல்லில் குறைந்தது ಒಂದು சிறிய எழுத்து (a-z) இருக்க வேண்டும்.",
+            "te": "⚠️ పాస్‌వర్డ్‌లో కనీసం ఒక చిన్న అక్షరం (a-z) ఉండాలి.",
+            "ml": "⚠️ പാസ്‌വേഡിൽ കുറഞ്ഞത് ഒരു ചെറിയ അക്ഷരം (a-z) ഉണ്ടായിരിക്കണം.",
+            "en": "⚠️ Password must contain at least one lowercase letter (a-z)."
+        }
+        return False, msgs.get(lang_code, msgs["en"])
+
+    if not any(c.isdigit() for c in password):
+        msgs = {
+            "kn": "⚠️ ಪಾಸ್‌ವರ್ಡ್ ಕನಿಷ್ಠ ಒಂದು ಅಂಕಿಯನ್ನು (0-9) ಹೊಂದಿರಬೇಕು.",
+            "hi": "⚠️ पासवर्ड में कम से कम एक संख्या (0-9) होनी चाहिए।",
+            "ta": "⚠️ கடவுச்சொல்லில் குறைந்தது ஒரு எண் (0-9) இருக்க வேண்டும்.",
+            "te": "⚠️ పాస్‌వర్డ్‌లో కనీసం ఒక సంఖ్య (0-9) ఉండాలి.",
+            "ml": "⚠️ പാസ്‌വേഡിൽ കുറഞ്ഞത് ഒരു സംഖ്യ (0-9) ഉണ്ടായിരിക്കണം.",
+            "en": "⚠️ Password must contain at least one numerical digit (0-9)."
+        }
+        return False, msgs.get(lang_code, msgs["en"])
+
+    if not any(not c.isalnum() and not c.isspace() for c in password):
+        msgs = {
+            "kn": "⚠️ ಪಾಸ್‌ವರ್ಡ್ ಕನಿಷ್ಠ ಒಂದು ವಿಶೇಷ ಚಿಹ್ನೆಯನ್ನು (ಉದಾ: !@#$%^&*) ಹೊಂದಿರಬೇಕು.",
+            "hi": "⚠️ पासवर्ड में कम से कम एक विशेष वर्ण (उदा: !@#$%^&*) होना चाहिए।",
+            "ta": "⚠️ கடவுச்சொல்லில் குறைந்தது ஒரு சிறப்பு எழுத்து (எ.கா: !@#$%^&*) இருக்க வேண்டும்.",
+            "te": "⚠️ పాస్‌వర్డ్‌లో కనీసం ఒక ప్రత్యేక పాత్ర (ఉదా: !@#$%^&*) ఉండాలి.",
+            "ml": "⚠️ പാസ്‌വേഡിൽ കുറഞ്ഞത് ഒരു പ്രത്യേക ചിഹ്നം (ഉദാ: !@#$%^&*) ഉണ്ടായിരിക്കണം.",
+            "en": "⚠️ Password must contain at least one special character (e.g. !@#$%^&*)."
         }
         return False, msgs.get(lang_code, msgs["en"])
 
     if confirm_password is not None:
         if password != confirm_password:
             msgs = {
-                "kn": "ಪಾಸ್‌ವರ್ಡ್‌ಗಳು ಹೊಂದಿಕೆಯಾಗುತ್ತಿಲ್ಲ. ದಯವಿಟ್ಟು ಎರಡೂ ಕ್ಷೇತ್ರಗಳಲ್ಲಿ ಒಂದೇ ರೀತಿಯ ಪಾಸ್‌ವರ್ಡ್ ನಮೂದಿಸಿ.",
-                "hi": "पासवर्ड मेल नहीं खाते। कृपया दोनों फ़ील्ड में समान पासवर्ड पुनः दर्ज करें।",
-                "ta": "கடவுச்சொற்கள் பொருந்தவில்லை. தயவுசெய்து இரண்டு புலங்களிலும் ஒரே கடவுச்சொல்லை உள்ளிடவும்.",
-                "te": "పాస్‌వర్డ్‌లు సరిపోలడం లేదు. దయచేసి రెండు ఫీల్డ్‌లలో ఒకే పాస్‌వర్డ్‌ను నమోదు చేయండి.",
-                "ml": "പാസ്‌വേഡുകൾ പൊരുത്തപ്പെടുന്നില്ല. രണ്ട് ഫീൽഡുകളിലും ഒരേ പാസ്‌വേഡ് നൽകുക.",
-                "en": "Passwords do not match. Please re-enter identical passwords in both fields."
+                "kn": "❌ ಪಾಸ್‌ವರ್ಡ್‌ಗಳು ಹೊಂದಿಕೆಯಾಗುತ್ತಿಲ್ಲ. ದಯವಿಟ್ಟು ಎರಡೂ ಕ್ಷೇತ್ರಗಳಲ್ಲಿ ಒಂದೇ ರೀತಿಯ ಪಾಸ್‌ವರ್ಡ್ ನಮೂದಿಸಿ.",
+                "hi": "❌ पासवर्ड मेल नहीं खाते। कृपया दोनों फ़ील्ड में समान पासवर्ड पुनः दर्ज करें।",
+                "ta": "❌ கடவுச்சொற்கள் பொருந்தவில்லை. தயவுசெய்து இரண்டு புலங்களிலும் ஒரே கடவுச்சொல்லை உள்ளிடவும்.",
+                "te": "❌ పాస్‌వర్డ్‌లు సరిపోలడం లేదు. దయచేసి రెండు ఫీల్డ్‌లలో ఒకే పాస్‌వర్డ్‌ను నమోదు చేయండి.",
+                "ml": "❌ പാസ്‌വേഡുകൾ പൊരുത്തപ്പെടുന്നില്ല. രണ്ട് ഫീൽഡുകളിലും ഒരേ പാസ്‌വേഡ് നൽകുക.",
+                "en": "❌ Passwords do not match. Please re-enter identical passwords in both fields."
             }
             return False, msgs.get(lang_code, msgs["en"])
 
     return True, ""
-
-
 
 
 def validate_emergency_name(name: str, lang: str = "en") -> Tuple[bool, str]:
@@ -385,7 +454,7 @@ def validate_emergency_name(name: str, lang: str = "en") -> Tuple[bool, str]:
             "hi": "आपातकालीन संपर्क व्यक्ति के नाम में केवल अक्षर और स्थान होने चाहिए (2 से 60 वर्ण)।",
             "ta": "அவசர தொடர்பு நபரின் பெயரில் எழுத்துக்கள் மற்றும் இடைவெளிகள் மட்டுமே இருக்க வேண்டும் (2 முதல் 60 எழுத்துக்கள்).",
             "te": "అత్యవసర సంప్రదింపు వ్యక్తి పేరులో అక్షరాలు మరియు ఖాళీలు మాత్రమే ఉండాలి (2 నుండి 60 అక్షరాలు).",
-            "ml": "അടിയന്തര സമ്പർക്ക വ്യക്തിയുടെ പേരിൽ അಕ್ಷರങ്ങളും ഇടവേളകളും മാത്രമേ ഉണ്ടാಕാവൂ (2 മുതൽ 60 അക്ഷരങ്ങൾ).",
+            "ml": "അടിയന്തര സമ്പർക്ക വ്യക്തിയുടെ പേരിൽ അക്ഷരങ്ങളും ഇടവേളകളും മാത്രമേ ഉണ്ടാകാവൂ (2 മുതൽ 60 അക്ഷരങ്ങൾ).",
             "en": "Emergency Contact Person must contain only alphabetic letters and spaces (2 to 60 characters)."
         }
         return False, msgs.get(lang_code, msgs["en"])
@@ -417,7 +486,7 @@ def validate_emergency_phone(emg_phone: str, primary_phone: str = "", lang: str 
             "kn": "ತುರ್ತು ಸಂಪರ್ಕ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಅಗತ್ಯವಿದೆ. ದಯವಿಟ್ಟು 10-ಅಂಕಿಯ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ.",
             "hi": "आपातकालीन संपर्क मोबाइल नंबर आवश्यक है। कृपया 10 अंकों का नंबर दर्ज करें।",
             "ta": "அவசர தொடர்பு மொபைல் எண் தேவை. தயவுசெய்து 10 இலக்க எண்ணை உள்ளிடவும்.",
-            "te": "అత్యవసర సంప్రదింపు మొబైల్ సంఖ్య అవసరం. దయచేసి 10 అంకెల సంఖ్యను నమోదు చేయండి.",
+            "te": "అత్యవసర సంప్రదింపు మొబైಲ್ సంఖ్య అవసరం. దయచేసి 10 అంకెల సంఖ్యను నమోదు చేయండి.",
             "ml": "അടിയന്തര സമ്പർക്ക മൊബൈൽ നമ്പർ ആവശ്യമാണ്. ദയവായി 10 അക്ക നമ്പർ നൽകുക.",
             "en": "Emergency contact mobile number is required."
         }
@@ -494,5 +563,6 @@ __all__ = [
     "validate_pincode",
     "validate_doctor_reg",
     "validate_password",
+    "check_password_complexity",
     "RECOGNIZED_COUNCILS"
 ]

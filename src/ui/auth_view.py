@@ -37,6 +37,7 @@ from src.security.guardrails import (
     validate_pincode,
     validate_doctor_reg,
     validate_password,
+    check_password_complexity,
     RECOGNIZED_COUNCILS
 )
 from src.ui.translations import get_ui_text, LANGUAGES
@@ -170,11 +171,11 @@ def render_restricted_admin_portal():
 
                 if not is_master and (not admin_otp_entered or admin_otp_entered != active_otp):
                     st.error("❌ Invalid Email OTP. Please check your Gmail inbox and enter the exact 6-digit code.")
-                elif not new_adm_pw1 or len(new_adm_pw1) < 6:
-                    st.error("⚠️ Password must be at least 6 characters long.")
-                elif new_adm_pw1 != new_adm_pw2:
-                    st.error("⚠️ Passwords do not match.")
                 else:
+                    v_adm_pw, adm_pw_err = validate_password(new_adm_pw1, new_adm_pw2, lang=ui_lang)
+                    if not v_adm_pw:
+                        st.error(adm_pw_err)
+                        st.stop()
                     success, msg = update_user_password("admin.chief", new_adm_pw1)
                     if success:
                         st.session_state["admin_forgot_mode"] = False
@@ -520,11 +521,11 @@ def render_auth_page():
                         st.error(t.get("err_enter_otp", "⚠️ Please enter the 6-digit Email OTP from your Gmail inbox."))
                     elif not active_otp or entered_otp != active_otp:
                         st.error(t.get("err_invalid_otp", "❌ Invalid Email OTP. Please check your Gmail inbox and enter the exact 6-digit code."))
-                    elif not new_pat_pw1 or len(new_pat_pw1) < 6:
-                        st.error(t.get("err_pw_min_length", "⚠️ New password must be at least 6 characters long."))
-                    elif new_pat_pw1 != new_pat_pw2:
-                        st.error(t.get("err_pw_mismatch", "⚠️ Passwords do not match."))
                     else:
+                        v_pat_pw, pat_pw_err = validate_password(new_pat_pw1, new_pat_pw2, lang=ui_lang)
+                        if not v_pat_pw:
+                            st.error(pat_pw_err)
+                            st.stop()
                         target_uname = st.session_state.get("pat_target_uname")
                         if not target_uname:
                             target_email = st.session_state.get("pat_target_email")
@@ -1045,9 +1046,9 @@ def render_auth_page():
             col_p1, col_p2 = st.columns(2)
             with col_p1:
                 new_pw = st.text_input(
-                    t.get("signup_pw_label", "Create Password (Min 6 chars):"),
+                    t.get("signup_pw_label", "Create Password (Min 8 chars, Upper, Lower, Number & Symbol):"),
                     type="password",
-                    placeholder="Enter password",
+                    placeholder=t.get("pw_placeholder_req", "e.g. MedFuse@2026"),
                     key="signup_pw1"
                 )
             with col_p2:
@@ -1058,15 +1059,46 @@ def render_auth_page():
                     key="signup_pw2"
                 )
 
-            # Instant Real-Time Password Comparison Feedback
+            # Instant Real-Time Password Complexity Checklist & Matching Feedback
             if new_pw or confirm_pw:
-                if len(new_pw) < 6:
-                    st.markdown(f"<div style='color: #b45309; font-size: 0.82rem; font-weight: 600; margin-top: 2px; margin-bottom: 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 6px 12px;'>⚠️ {t.get('err_pw_min_length', 'Password must be at least 6 characters long.')} ({len(new_pw)}/6 chars)</div>", unsafe_allow_html=True)
+                cx = check_password_complexity(new_pw)
+                c_len = "#16a34a" if cx["min_length"] else "#94a3b8"
+                c_upp = "#16a34a" if cx["has_upper"] else "#94a3b8"
+                c_low = "#16a34a" if cx["has_lower"] else "#94a3b8"
+                c_num = "#16a34a" if cx["has_number"] else "#94a3b8"
+                c_spe = "#16a34a" if cx["has_special"] else "#94a3b8"
+
+                i_len = "✓" if cx["min_length"] else "○"
+                i_upp = "✓" if cx["has_upper"] else "○"
+                i_low = "✓" if cx["has_lower"] else "○"
+                i_num = "✓" if cx["has_number"] else "○"
+                i_spe = "✓" if cx["has_special"] else "○"
+
+                st.markdown(f'''
+                    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-top: 4px; margin-bottom: 10px;">
+                        <div style="font-size: 0.74rem; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">
+                            {t.get('pw_req_title', '🛡️ Password Security Criteria (Required for Best Protection):')}
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.78rem;">
+                            <span style="color: {c_len}; font-weight: 700;">{i_len} {t.get('pw_rule_len', 'Min 8 Chars')}</span>
+                            <span style="color: {c_upp}; font-weight: 700;">{i_upp} {t.get('pw_rule_upper', 'Uppercase (A-Z)')}</span>
+                            <span style="color: {c_low}; font-weight: 700;">{i_low} {t.get('pw_rule_lower', 'Lowercase (a-z)')}</span>
+                            <span style="color: {c_num}; font-weight: 700;">{i_num} {t.get('pw_rule_num', 'Number (0-9)')}</span>
+                            <span style="color: {c_spe}; font-weight: 700;">{i_spe} {t.get('pw_rule_special', 'Special Symbol (!@#$)')}</span>
+                        </div>
+                    </div>
+                ''', unsafe_allow_html=True)
+
+                is_all_complex = all(cx.values())
+
+                if not is_all_complex and new_pw:
+                    _, missing_err = validate_password(new_pw, lang=ui_lang)
+                    st.markdown(f"<div style='color: #b45309; font-size: 0.82rem; font-weight: 600; margin-top: 2px; margin-bottom: 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 6px 12px;'>{missing_err}</div>", unsafe_allow_html=True)
                 elif confirm_pw:
                     if new_pw != confirm_pw:
                         st.markdown(f"<div style='color: #b91c1c; font-size: 0.82rem; font-weight: 700; margin-top: 2px; margin-bottom: 10px; background: #fef2f2; border: 1px solid #f87171; border-radius: 6px; padding: 6px 12px;'>{t.get('badge_pw_mismatch', '❌ Passwords do not match! Please enter identical passwords in both fields.')}</div>", unsafe_allow_html=True)
                     else:
-                        st.markdown(f"<div style='color: #15803d; font-size: 0.82rem; font-weight: 700; margin-top: 2px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 6px 12px;'>{t.get('badge_pw_match', '✓ Passwords match successfully! Ready for secure registration.')}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='color: #15803d; font-size: 0.82rem; font-weight: 700; margin-top: 2px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 6px 12px;'>✓ All password security requirements met & passwords match successfully!</div>", unsafe_allow_html=True)
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
