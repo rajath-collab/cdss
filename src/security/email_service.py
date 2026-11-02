@@ -176,12 +176,12 @@ def send_smtp_otp_email(to_email: str, otp_code: str, recipient_name: str = "Use
     try:
         if cfg.get("smtp_use_tls", True):
             context = ssl.create_default_context()
-            with smtplib.SMTP(smtp_server, smtp_port, timeout=12) as server:
+            with smtplib.SMTP(smtp_server, smtp_port, timeout=4) as server:
                 server.starttls(context=context)
                 server.login(smtp_user, smtp_pass)
                 server.send_message(msg)
         else:
-            with smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=12) as server:
+            with smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=4) as server:
                 server.login(smtp_user, smtp_pass)
                 server.send_message(msg)
         return True, f"OTP email successfully delivered to {to_email} via SMTP ({smtp_server})."

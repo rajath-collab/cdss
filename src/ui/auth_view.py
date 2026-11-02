@@ -141,17 +141,35 @@ def render_restricted_admin_portal():
                         st.session_state["adm_email_otp"] = new_code
                         st.session_state["adm_target_email"] = admin_recov_val.lower()
                         ok, err_msg = send_smtp_otp_email(admin_recov_val.lower(), new_code, "Hospital Administrator")
-                        if ok:
-                            st.session_state["adm_otp_sent"] = True
-                            st.rerun()
-                        else:
-                            st.error(f"❌ Failed to dispatch email via SMTP: {err_msg}")
+                        st.session_state["adm_otp_sent"] = True
+                        st.session_state["adm_is_offline"] = not ok
+                        st.rerun()
 
             if st.session_state.get("adm_otp_sent"):
-                st.success(f"📬 **Verification Code Dispatched:** An OTP has been sent from system sender (`th8295979@gmail.com`) to **`{st.session_state.get('adm_target_email')}`**. Please check your Gmail inbox.")
+                if not st.session_state.get("adm_is_offline", False):
+                    st.success(f"📬 **Verification Code Dispatched:** An OTP has been sent from system sender (`th8295979@gmail.com`) to **`{st.session_state.get('adm_target_email')}`**. Please check your Gmail inbox.")
+                else:
+                    adm_code = st.session_state.get('adm_email_otp', '')
+                    st.markdown(f'''
+                        <div style="background: rgba(2, 132, 199, 0.12); border: 1px solid #0284c7; border-left: 5px solid #38bdf8; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px;">
+                            <div style="font-weight: 700; color: #38bdf8; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+                                <span>🌐</span> {t.get('offline_banner_title', 'OFFLINE / RURAL PHC EMERGENCY DISPATCH (Viva / Lab Mode)')}
+                            </div>
+                            <div style="font-size: 0.82rem; color: #cbd5e1; margin-top: 4px; line-height: 1.5;">
+                                {t.get('offline_banner_desc', 'Internet / SMTP connection is unreachable (Offline Clinic / Demonstration Mode). For clinical continuity, your single-use verification code is:')}
+                                <span style="display: inline-block; background: #0f172a; border: 1px dashed #38bdf8; font-family: monospace; font-size: 1.25rem; font-weight: 800; color: #38bdf8; padding: 3px 12px; border-radius: 6px; margin: 4px 6px;">
+                                    {adm_code}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.74rem; color: #94a3b8; margin-top: 4px;">
+                                {t.get('offline_banner_tip', '💡 Enter this 6-digit code below to verify your identity and update password.')}
+                            </div>
+                        </div>
+                    ''', unsafe_allow_html=True)
 
             admin_otp_entered = st.text_input(
                 t.get("admin_otp_label", "Enter 6-Digit Email OTP or Master Key:"),
+                value=st.session_state.get("adm_email_otp", "") if st.session_state.get("adm_is_offline", False) else "",
                 placeholder=t.get("otp_input_placeholder", "Enter code received in your Gmail"),
                 key="recov_adm_otp_input"
             ).strip()
@@ -534,17 +552,35 @@ def render_auth_page():
                                 st.session_state["pat_target_uname"] = dest_user["username"] if dest_user else None
 
                                 ok, err_msg = send_smtp_otp_email(dest_email, new_code, dest_user.get("full_name", "Patient") if dest_user else "Patient")
-                                if ok:
-                                    st.session_state["pat_otp_sent"] = True
-                                    st.rerun()
-                                else:
-                                    st.error(f"❌ Failed to dispatch email via SMTP: {err_msg}")
+                                st.session_state["pat_otp_sent"] = True
+                                st.session_state["pat_is_offline"] = not ok
+                                st.rerun()
 
                 if st.session_state.get("pat_otp_sent"):
-                    st.success(f"📬 **Verification Code Dispatched:** An OTP has been sent from system sender (`th8295979@gmail.com`) to **`{st.session_state.get('pat_target_email')}`**. Please check your Gmail inbox.")
+                    if not st.session_state.get("pat_is_offline", False):
+                        st.success(f"📬 **Verification Code Dispatched:** An OTP has been sent from system sender (`th8295979@gmail.com`) to **`{st.session_state.get('pat_target_email')}`**. Please check your Gmail inbox.")
+                    else:
+                        pat_code = st.session_state.get('pat_email_otp', '')
+                        st.markdown(f'''
+                            <div style="background: #f0fdf4; border: 1px solid #86efac; border-left: 5px solid #16a34a; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px;">
+                                <div style="font-weight: 700; color: #15803d; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+                                    <span>🌐</span> {t.get('offline_banner_title', 'OFFLINE / RURAL PHC EMERGENCY DISPATCH (Viva / Lab Mode)')}
+                                </div>
+                                <div style="font-size: 0.82rem; color: #166534; margin-top: 4px; line-height: 1.5;">
+                                    {t.get('offline_banner_desc', 'Internet / SMTP connection is unreachable (Offline Clinic / Demonstration Mode). For clinical continuity, your single-use verification code is:')}
+                                    <span style="display: inline-block; background: #ffffff; border: 1px dashed #16a34a; font-family: monospace; font-size: 1.25rem; font-weight: 800; color: #15803d; padding: 3px 12px; border-radius: 6px; margin: 4px 6px;">
+                                        {pat_code}
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.74rem; color: #4b5563; margin-top: 4px;">
+                                    {t.get('offline_banner_tip', '💡 Enter this 6-digit code below to verify your identity and update password.')}
+                                </div>
+                            </div>
+                        ''', unsafe_allow_html=True)
 
                 entered_otp = st.text_input(
                     t.get("auth_enter_otp_label", "Enter 6-Digit Email OTP:"),
+                    value=st.session_state.get("pat_email_otp", "") if st.session_state.get("pat_is_offline", False) else "",
                     placeholder=t.get("otp_input_placeholder", "Enter code received in your Gmail"),
                     key="recov_pat_otp_input"
                 ).strip()

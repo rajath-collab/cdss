@@ -11,6 +11,9 @@ LANGUAGES = {'en': {'name': 'English', 'native': 'English', 'flag': '🌐'}, 'kn
 
 TRANSLATIONS: Dict[str, Dict[str, Any]] = {
     "en": {
+        "offline_banner_title": "🌐 OFFLINE / RURAL PHC EMERGENCY DISPATCH (Viva / Lab Mode)",
+        "offline_banner_desc": "Internet / SMTP connection is unreachable (Offline Clinic / Demonstration Mode). For clinical continuity, your single-use verification code is:",
+        "offline_banner_tip": "💡 Enter this 6-digit code below to verify your identity and update password.",
         "pw_req_title": "🛡️ Password Security Criteria (Required for Best Protection):",
         "pw_rule_len": "Min 8 Chars",
         "pw_rule_upper": "Uppercase (A-Z)",
