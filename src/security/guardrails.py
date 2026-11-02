@@ -2,15 +2,16 @@
 Security Guardrails & Input Validation Engine
 MedFuse-AI - Multimodal Clinical Decision Support System (CDSS)
 Enforces:
-  - Full Name Validation (alphabetical characters only, strictly no numbers or symbols)
+  - Full Name Validation (alphabetical characters and spaces only, strictly no numbers or symbols)
   - Strict Indian 10-Digit Mobile Number Validation (6-9 prefix, no arbitrary strings)
+  - Authentic @gmail.com validation (strictly rejects numbers at start e.g. 123@gmail.com, temporary spam mail)
+  - Emergency Contact validation (Emergency mobile & email cannot be identical to patient contact)
   - Medical Council Registration Format (NMC Act 2019 / State Council verification)
-  - Email Address & Postal Pincode Format
-  - Password Strength & Confirm Password Matching
+  - Postal Pincode Format & Password Matching
 """
 
 import re
-from typing import Tuple
+from typing import Tuple, Dict, Any
 
 # Recognized State Medical Council & National Medical Commission Prefixes
 RECOGNIZED_COUNCILS = {
@@ -42,6 +43,7 @@ PINCODE_REGEX = re.compile(r"^[1-9][0-9]{5}$")
 def validate_full_name(name: str, lang: str = "en") -> Tuple[bool, str]:
     """
     Validates that Full Name contains strictly letters and spaces with multi-lingual error support.
+    Rejects numbers, digits, symbols, or single-character names.
     """
     lang_code = (lang or "en").lower()
     if not name or not name.strip():
@@ -96,9 +98,9 @@ def validate_full_name(name: str, lang: str = "en") -> Tuple[bool, str]:
 
 def validate_phone_number(phone: str, lang: str = "en") -> Tuple[bool, str, str]:
     """
-    Validates a 10-digit Indian mobile number with full vernacular localization (en, kn, hi, ta, te, ml).
+    Validates a 10-digit Indian mobile number with full vernacular localization.
     Accepts raw 10 digits or numbers with +91 / 0 prefix.
-    Rejects letters, random lengths, and numbers starting with 0-5.
+    Rejects letters, random lengths, repetitive dummy numbers, and prefixes starting with 0-5.
     Returns: (is_valid, error_message, cleaned_10_digit_number)
     """
     lang_code = (lang or "en").lower()
@@ -115,11 +117,8 @@ def validate_phone_number(phone: str, lang: str = "en") -> Tuple[bool, str, str]
         return False, msgs.get(lang_code, msgs["en"]), ""
 
     raw = phone.strip()
-
-    # Normalize: strip out spaces, dashes, parentheses
     cleaned = re.sub(r"[\s\-\(\)]", "", raw)
 
-    # Strip leading +91 or 91 if followed by 10 digits
     if cleaned.startswith("+91") and len(cleaned) == 13:
         cleaned = cleaned[3:]
     elif cleaned.startswith("91") and len(cleaned) == 12:
@@ -127,7 +126,6 @@ def validate_phone_number(phone: str, lang: str = "en") -> Tuple[bool, str, str]
     elif cleaned.startswith("0") and len(cleaned) == 11:
         cleaned = cleaned[1:]
 
-    # Check for non-digit characters
     if not cleaned.isdigit():
         msgs = {
             "kn": "ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯಲ್ಲಿ ಕೇವಲ ಅಂಕಿಗಳು ಮಾತ್ರ ಇರಬೇಕು. ಅಕ್ಷರಗಳು ಅಥವಾ ಚಿಹ್ನೆಗಳನ್ನು ಅನುಮತಿಸಲಾಗುವುದಿಲ್ಲ.",
@@ -139,7 +137,6 @@ def validate_phone_number(phone: str, lang: str = "en") -> Tuple[bool, str, str]
         }
         return False, msgs.get(lang_code, msgs["en"]), ""
 
-    # Check exact 10 digits
     if len(cleaned) != 10:
         msgs = {
             "kn": f"ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯು ನಿಖರವಾಗಿ 10 ಅಂಕಿಗಳನ್ನು ಹೊಂದಿರಬೇಕು (ನೀವು {len(cleaned)} ಅಂಕಿಗಳನ್ನು ನಮೂದಿಸಿದ್ದೀರಿ).",
@@ -151,7 +148,6 @@ def validate_phone_number(phone: str, lang: str = "en") -> Tuple[bool, str, str]
         }
         return False, msgs.get(lang_code, msgs["en"]), ""
 
-    # Check valid Indian mobile starting prefix (6, 7, 8, 9)
     if cleaned[0] not in ["6", "7", "8", "9"]:
         msgs = {
             "kn": f"ಅಮಾನ್ಯ ಮೊಬೈಲ್ ಪೂರ್ವಪ್ರತ್ಯಯ '{cleaned[0]}'. ಮಾನ್ಯ ಭಾರತೀಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಗಳು 6, 7, 8, ಅಥವಾ 9 ರಿಂದ ಪ್ರಾರಂಭವಾಗಬೇಕು.",
@@ -163,25 +159,28 @@ def validate_phone_number(phone: str, lang: str = "en") -> Tuple[bool, str, str]
         }
         return False, msgs.get(lang_code, msgs["en"]), ""
 
-    # Check against repetitive dummy numbers like 0000000000 or 1111111111
     if len(set(cleaned)) == 1:
         msgs = {
-            "kn": "ಅಮಾನ್ಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ: ಪುನರಾವರ್ತಿತ ಅಂಕಿಗಳು ಪತ್ತೆಯಾಗಿವೆ.",
+            "kn": "ಅಮಾನ್ಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ: ಪುನರಾವರ್ತಿತ ನಕಲಿ ಅಂಕಿಗಳು ಪತ್ತೆಯಾಗಿವೆ.",
             "hi": "अमान्य मोबाइल नंबर: दोहराए गए अंक पाए गए।",
             "ta": "தவறான மொபைல் எண்: மீண்டும் மீண்டும் வரும் எண்கள் கண்டறியப்பட்டன.",
             "te": "చెల్లని మొబైల్ సంఖ్య: పునరావృత అంకెలు కనుగొనబడ్డాయి.",
             "ml": "അസാധുവായ മൊബൈൽ നമ്പർ: ആവർത്തിച്ചുള്ള അക്കങ്ങൾ കണ്ടെത്തി.",
-            "en": "Invalid mobile number: repetitive digits detected."
+            "en": "Invalid mobile number: repetitive dummy digits detected."
         }
         return False, msgs.get(lang_code, msgs["en"]), ""
 
     return True, "", cleaned
 
 
-def validate_email(email: str, allow_empty: bool = True, lang: str = "en") -> Tuple[bool, str]:
+def validate_email(email: str, allow_empty: bool = False, lang: str = "en") -> Tuple[bool, str]:
     """
-    Validates standard email format and strictly enforces @gmail.com domain to prevent
-    temporary/disposable spam mail accounts (e.g. tempmail, guerrillamail, 10minutemail, yopmail).
+    Validates standard email format and strictly enforces authentic @gmail.com domain.
+    Strictly Rejects:
+      - Numbers at start of username (e.g. '123@gmail.com', '1233@gmail.com')
+      - Usernames consisting entirely of numbers
+      - Usernames less than 3 characters before @gmail.com
+      - Temporary/disposable email domains (tempmail, 10minutemail, guerrillamail, yopmail)
     """
     lang_code = (lang or "en").lower()
     if not email or not email.strip():
@@ -198,14 +197,15 @@ def validate_email(email: str, allow_empty: bool = True, lang: str = "en") -> Tu
         return False, msgs.get(lang_code, msgs["en"])
 
     clean = email.strip().lower()
+
     if not EMAIL_REGEX.match(clean):
         msgs = {
-            "kn": "ದಯವಿಟ್ಟು ಮಾನ್ಯವಾದ ಇಮೇಲ್ ವಿಳಾಸವನ್ನು ನಮೂದಿಸಿ (ಉದಾ: name@gmail.com).",
-            "hi": "कृपया एक मान्य ईमेल पता दर्ज करें (उदा: name@gmail.com)।",
-            "ta": "சரியான மின்னஞ்சல் முகவரியை உள்ளிடவும் (எ.கா: name@gmail.com).",
-            "te": "దయచేసి చెల్లుబాటు అయ్యే ఇమెయిల్ చిరునామాను నమోదు చేయండి (ఉదా: name@gmail.com).",
-            "ml": "സാധുവായ ഒരു ഇമെയിൽ വിലാസം നൽകുക (ഉദാ: name@gmail.com).",
-            "en": "Please enter a valid email address (e.g., username@gmail.com)."
+            "kn": "ದಯವಿಟ್ಟು ಮಾನ್ಯವಾದ ಇಮೇಲ್ ವಿಳಾಸವನ್ನು ನಮೂದಿಸಿ (ಉದಾ: ananya.rao@gmail.com).",
+            "hi": "कृपया एक मान्य ईमेल पता दर्ज करें (उदा: ananya.rao@gmail.com)।",
+            "ta": "சரியான மின்னஞ்சல் முகவரியை உள்ளிடவும் (எ.கா: ananya.rao@gmail.com).",
+            "te": "దయచేసి చెల్లుబాటు అయ్యే ಇమెయిల్ చిరునామాను నమోదు చేయండి (ఉదా: ananya.rao@gmail.com).",
+            "ml": "സാധുവായ ഒരു ഇമെയിൽ വിലാസം നൽകുക (ഉദാ: ananya.rao@gmail.com).",
+            "en": "Please enter a valid email address (e.g., ananya.rao@gmail.com)."
         }
         return False, msgs.get(lang_code, msgs["en"])
 
@@ -220,23 +220,61 @@ def validate_email(email: str, allow_empty: bool = True, lang: str = "en") -> Tu
         }
         return False, msgs.get(lang_code, msgs["en"])
 
+    username_part = clean.split("@")[0]
+
+    # Rule 1: Email username cannot start with a number or symbol (e.g. 123@gmail.com, 1233@gmail.com)
+    if username_part and not re.match(r'^[a-zA-Z]', username_part):
+        msgs = {
+            "kn": f"⚠️ ಇಮೇಲ್ ಭದ್ರತಾ ದೋಷ: ಇಮೇಲ್ ಬಳಕೆದಾರ ಹೆಸರು '{username_part}' ಅಂಕಿಗಳಿಂದ ಪ್ರಾರಂಭವಾಗಬಾರದು (ಉದಾ: 123@gmail.com). ಇದು ಅಕ್ಷರದಿಂದ ಪ್ರಾರಂಭವಾಗಬೇಕು (ಉದಾ: ananya.rao@gmail.com).",
+            "hi": f"⚠️ ईमेल सुरक्षा त्रुटि: ईमेल उपयोगकर्ता नाम '{username_part}' संख्या से शुरू नहीं हो सकता। यह एक अक्षर से शुरू होना चाहिए (उदा: ananya.rao@gmail.com)।",
+            "ta": f"⚠️ மின்னஞ்சல் பிழை: மின்னஞ்சல் பயனர்பெயர் '{username_part}' எண்ணில் தொடங்கக்கூடாது. இது எழுத்தில் தொடங்க வேண்டும்.",
+            "te": f"⚠️ ఇమెయిల్ లోపం: ఇమెయిల్ వినియోగదారు పేరు '{username_part}' సంఖ్యతో ప్రారంభం కాకూడదు. ఇది అక్షరంతో ప్రారంభం కావాలి.",
+            "ml": f"⚠️ ഇമെയിൽ പിശക്: ഇമെയിൽ ഉപയോക്തൃനാമം '{username_part}' അക്കത്തിൽ ആരംഭിക്കാൻ പാടില്ല. ഇത് അക്ഷരത്തിൽ ആരംഭിക്കണം.",
+            "en": f"⚠️ Email Security Error: Email username '{username_part}' cannot start with numbers (e.g. 123@gmail.com). It must start with an alphabetic letter (e.g. ananya.rao@gmail.com)."
+        }
+        return False, msgs.get(lang_code, msgs["en"])
+
+    # Rule 2: Email username cannot be composed entirely of numbers
+    if username_part.isdigit():
+        msgs = {
+            "kn": "⚠️ ಅಮಾನ್ಯ ಇಮೇಲ್: ಇಮೇಲ್ ಬಳಕೆದಾರ ಹೆಸರು ಕೇವಲ ಅಂಕಿಗಳನ್ನು ಹೊಂದಿರಬಾರದು. ದಯವಿಟ್ಟು ಮಾನ್ಯವಾದ ವೈಯಕ್ತಿಕ ಇಮೇಲ್ ನಮೂದಿಸಿ.",
+            "hi": "⚠️ अमान्य ईमेल: ईमेल उपयोगकर्ता नाम केवल संख्याओं का नहीं हो सकता। कृपया एक वैध व्यक्तिगत ईमेल दर्ज करें।",
+            "ta": "⚠️ தவறான மின்னஞ்சல்: பயனர்பெயரில் எண்கள் மட்டுமே இருக்கக்கூடாது.",
+            "te": "⚠️ చెల్లని ಇమెయిల్: ఇమెయిల్ వినియోగదారు పేరు కేవలం సంఖ్యలతో ఉండకూడదు.",
+            "ml": "⚠️ അസാധുവായ ഇമെയിൽ: ഇമെയിൽ ഉപയോക്തൃനാമം അക്കങ്ങൾ മാത്രമായിരിക്കരുത്.",
+            "en": "⚠️ Invalid Email: Email username cannot be composed entirely of numbers. Please enter an authentic personal email address."
+        }
+        return False, msgs.get(lang_code, msgs["en"])
+
+    # Rule 3: Email username must be at least 3 characters before @gmail.com
+    if len(username_part) < 3:
+        msgs = {
+            "kn": "⚠️ ಇಮೇಲ್ ಬಳಕೆದಾರ ಹೆಸರು ಕನಿಷ್ಠ 3 ಅಕ್ಷರಗಳನ್ನು ಹೊಂದಿರಬೇಕು.",
+            "hi": "⚠️ ईमेल उपयोगकर्ता नाम कम से कम 3 वर्णों का होना चाहिए।",
+            "ta": "⚠️ மின்னஞ்சல் பயனர்பெயர் குறைந்தது 3 எழுத்துக்கள் இருக்க வேண்டும்.",
+            "te": "⚠️ ఇమెయిల్ వినియోగదారు పేరు కనీసం 3 అక్షరాలు ఉండాలి.",
+            "ml": "⚠️ ഇമെയിൽ ഉപയോക്തൃനാമം കുറഞ്ഞത് 3 അക്ഷരങ്ങൾ ഉണ്ടായിരിക്കണം.",
+            "en": "⚠️ Email username must be at least 3 characters long before @gmail.com."
+        }
+        return False, msgs.get(lang_code, msgs["en"])
+
     return True, ""
 
 
 def validate_pincode(pincode: str, lang: str = "en") -> Tuple[bool, str]:
     """Validates Indian 6-digit postal pincode with multi-lingual error messages."""
     if not pincode or not pincode.strip():
-        return True, ""
+        return False, "Postal Pincode is required."
     clean = pincode.strip()
     if not PINCODE_REGEX.match(clean):
         lang_code = (lang or "en").lower()
         msgs = {
-            "kn": "ಅಂಚೆ ಪಿನ್‌ಕೋಡ್ ಮಾನ್ಯವಾದ 6-ಅಂಕಿಯ ಸಂಖ್ಯೆಯಾಗಿರಬೇಕು.",
-            "hi": "डाक पिनकोड एक मान्य 6-अंकीय संख्या होनी चाहिए।",
-            "ta": "அஞ்சல் குறியீடு சரியான 6 இலக்க எண்ணாக இருக்க வேண்டும்.",
-            "te": "పోస్టల్ పిన్‌కోడ్ చెల్లుబాటు అయ్యే 6 అంకెల సంఖ్య అయి ఉండాలి.",
-            "ml": "തപാൽ പിൻകോഡ് സാധുവായ 6 അക്ക നമ്പർ ആയിരിക്കണം.",
-            "en": "Postal Pincode must be a valid 6-digit number."
+            "kn": "ಅಂಚೆ ಪಿನ್‌ಕೋಡ್ ಮಾನ್ಯವಾದ 6-ಅಂಕಿಯ ಸಂಖ್ಯೆಯಾಗಿರಬೇಕು (ಉದಾ: 574211).",
+            "hi": "डाक पिनकोड एक मान्य 6-अंकीय संख्या होनी चाहिए (उदा: 574211)।",
+            "ta": "அஞ்சல் குறியீடு சரியான 6 இலக்க எண்ணாக இருக்க வேண்டும் (எ.கா: 574211).",
+            "te": "పోస్టల్ పిన్‌కోడ్ చెల్లుబాటు అయ్యే 6 అంకెల సంఖ్య అయి ఉండాలి (ఉదా: 574211).",
+            "ml": "തപാൽ പിൻകോഡ് സാധുവായ 6 അക്ക നമ്പർ ആയിരിക്കണം (ഉദാ: 574211).",
+            "en": "Postal Pincode must be a valid 6-digit number (e.g., 574211)."
         }
         return False, msgs.get(lang_code, msgs["en"])
     return True, ""
@@ -309,10 +347,150 @@ def validate_password(password: str, confirm_password: str = None, lang: str = "
     return True, ""
 
 
+
+
+def validate_emergency_name(name: str, lang: str = "en") -> Tuple[bool, str]:
+    """
+    Validates Emergency Contact Person Name.
+    Strictly enforces alphabetic letters and spaces only. Rejects numbers, digits, and symbols.
+    """
+    lang_code = (lang or "en").lower()
+    if not name or not name.strip():
+        msgs = {
+            "kn": "ತುರ್ತು ಸಂಪರ್ಕ ವ್ಯಕ್ತಿಯ ಹೆಸರು ಖಾಲಿಯಿರಬಾರದು. ದಯವಿಟ್ಟು ಹೆಸರನ್ನು ನಮೂದಿಸಿ.",
+            "hi": "आपातकालीन संपर्क व्यक्ति का नाम खाली नहीं हो सकता। कृपया नाम दर्ज करें।",
+            "ta": "அவசர தொடர்பு நபரின் பெயர் காலியாக இருக்கக்கூடாது. தயவுசெய்து பெயரை உள்ளிடவும்.",
+            "te": "అత్యవసర సంప్రదింపు వ్యక్తి పేరు ఖాళీగా ఉండకూడదు. దయచేసి పేరును నమోదు చేయండి.",
+            "ml": "അടിയന്തര സമ്പർക്ക വ്യക്തിയുടെ പേര് ശൂന്യമായിരിക്കരുത്. ദയവായി പേര് നൽകുക.",
+            "en": "Emergency Contact Person cannot be empty. Please enter their name."
+        }
+        return False, msgs.get(lang_code, msgs["en"])
+
+    clean_name = name.strip()
+
+    if re.search(r"\d", clean_name):
+        msgs = {
+            "kn": "ತುರ್ತು ಸಂಪರ್ಕ ವ್ಯಕ್ತಿಯ ಹೆಸರಿನಲ್ಲಿ ಸಂಖ್ಯೆಗಳು ಅಥವಾ ಅಂಕಿಗಳು ಇರಬಾರದು. ಕೇವಲ ಅಕ್ಷರಗಳನ್ನು ಮಾತ್ರ ನಮೂದಿಸಿ.",
+            "hi": "आपातकालीन संपर्क व्यक्ति के नाम में संख्याएँ या अंक नहीं होने चाहिए। केवल अक्षरों को दर्ज करें।",
+            "ta": "அவசர தொடர்பு நபரின் பெயரில் எண்கள் இருக்கக்கூடாது. எழுத்துக்களை மட்டுமே உள்ளிடவும்.",
+            "te": "అత్యవసర సంప్రదింపు వ్యక్తి పేరులో సంఖ్యలు లేదా అంకెలు ఉండకూడదు. అక్షరాలను మాత్రమే నమోదు చేయండి.",
+            "ml": "അടിയന്തര സമ്പർക്ക വ്യക്തിയുടെ പേരിൽ അക്കങ്ങൾ ഉണ്ടാകരുത്. അക്ഷരങ്ങൾ മാത്രം നൽകുക.",
+            "en": "Emergency Contact Person cannot contain numbers or digits. Please enter alphabetic characters only."
+        }
+        return False, msgs.get(lang_code, msgs["en"])
+
+    if not re.match(r"^[A-Za-z\s.'-]{2,60}$", clean_name):
+        msgs = {
+            "kn": "ತುರ್ತು ಸಂಪರ್ಕ ವ್ಯಕ್ತಿಯ ಹೆಸರು ಕೇವಲ ಅಕ್ಷರಗಳು ಮತ್ತು ಸ್ಥಳಾವಕಾಶಗಳನ್ನು ಹೊಂದಿರಬೇಕು (2 ರಿಂದ 60 ಅಕ್ಷರಗಳು).",
+            "hi": "आपातकालीन संपर्क व्यक्ति के नाम में केवल अक्षर और स्थान होने चाहिए (2 से 60 वर्ण)।",
+            "ta": "அவசர தொடர்பு நபரின் பெயரில் எழுத்துக்கள் மற்றும் இடைவெளிகள் மட்டுமே இருக்க வேண்டும் (2 முதல் 60 எழுத்துக்கள்).",
+            "te": "అత్యవసర సంప్రదింపు వ్యక్తి పేరులో అక్షరాలు మరియు ఖాళీలు మాత్రమే ఉండాలి (2 నుండి 60 అక్షరాలు).",
+            "ml": "അടിയന്തര സമ്പർക്ക വ്യക്തിയുടെ പേരിൽ അಕ್ಷರങ്ങളും ഇടവേളകളും മാത്രമേ ഉണ്ടാಕാവൂ (2 മുതൽ 60 അക്ഷരങ്ങൾ).",
+            "en": "Emergency Contact Person must contain only alphabetic letters and spaces (2 to 60 characters)."
+        }
+        return False, msgs.get(lang_code, msgs["en"])
+
+    letters = re.findall(r"[A-Za-z]", clean_name)
+    if len(letters) < 2:
+        msgs = {
+            "kn": "ತುರ್ತು ಸಂಪರ್ಕ ವ್ಯಕ್ತಿಯ ಹೆಸರು ಕನಿಷ್ಠ 2 ಅಕ್ಷರಗಳನ್ನು ಹೊಂದಿರಬೇಕು.",
+            "hi": "आपातकालीन संपर्क व्यक्ति के नाम में कम से कम 2 अक्षर होने चाहिए।",
+            "ta": "அவசர தொடர்பு நபரின் பெயரில் குறைந்தது 2 எழுத்துக்கள் இருக்க வேண்டும்.",
+            "te": "అత్యవసర సంప్రదింపు వ్యక్తి పేరులో కనీసం 2 అక్షరాలు ఉండాలి.",
+            "ml": "അടിയന്തര സമ്പർക്ക വ്യക്തിയുടെ പേരിൽ കുറഞ്ഞത് 2 അക്ഷരങ്ങൾ ഉണ്ടായിരിക്കണം.",
+            "en": "Emergency Contact Person must contain at least 2 alphabetic letters."
+        }
+        return False, msgs.get(lang_code, msgs["en"])
+
+    return True, ""
+
+
+def validate_emergency_phone(emg_phone: str, primary_phone: str = "", lang: str = "en") -> Tuple[bool, str, str]:
+    """
+    Validates Emergency Contact Mobile Number.
+    Strictly enforces valid 10-digit Indian mobile and ensures it is NOT identical to the primary mobile number.
+    """
+    lang_code = (lang or "en").lower()
+
+    if not emg_phone or not emg_phone.strip():
+        msgs = {
+            "kn": "ತುರ್ತು ಸಂಪರ್ಕ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಅಗತ್ಯವಿದೆ. ದಯವಿಟ್ಟು 10-ಅಂಕಿಯ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ.",
+            "hi": "आपातकालीन संपर्क मोबाइल नंबर आवश्यक है। कृपया 10 अंकों का नंबर दर्ज करें।",
+            "ta": "அவசர தொடர்பு மொபைல் எண் தேவை. தயவுசெய்து 10 இலக்க எண்ணை உள்ளிடவும்.",
+            "te": "అత్యవసర సంప్రదింపు మొబైల్ సంఖ్య అవసరం. దయచేసి 10 అంకెల సంఖ్యను నమోదు చేయండి.",
+            "ml": "അടിയന്തര സമ്പർക്ക മൊബൈൽ നമ്പർ ആവശ്യമാണ്. ദയവായി 10 അക്ക നമ്പർ നൽകുക.",
+            "en": "Emergency contact mobile number is required."
+        }
+        return False, msgs.get(lang_code, msgs["en"]), ""
+
+    is_valid, err_msg, clean_emg = validate_phone_number(emg_phone, lang=lang_code)
+    if not is_valid:
+        return False, err_msg, ""
+
+    clean_primary = ""
+    if primary_phone and primary_phone.strip():
+        _, _, clean_primary = validate_phone_number(primary_phone, lang=lang_code)
+
+    if clean_primary and clean_emg == clean_primary:
+        msgs = {
+            "kn": "⚠️ ಭದ್ರತಾ ನೀತಿ: ತುರ್ತು ಸಂಪರ್ಕ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯು ನಿಮ್ಮ ಪ್ರಾಥಮಿಕ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯಂತೆಯೇ ಇರಬಾರದು. ದಯವಿಟ್ಟು ಪರ್ಯಾಯ ಪಾಲಕರು ಅಥವಾ ಸಂಬಂಧಿಕರ ಸಂಖ್ಯೆಯನ್ನು ನೀಡಿ.",
+            "hi": "⚠️ सुरक्षा नीति: आपातकालीन संपर्क मोबाइल नंबर आपके प्राथमिक मोबाइल नंबर के समान नहीं हो सकता। कृपया किसी वैकल्पिक अभिभावक या रिश्तेदार का नंबर दें।",
+            "ta": "⚠️ பாதுகாப்பு கொள்கை: அவசர தொடர்பு மொபைல் எண் உங்கள் முதன்மை மொபைல் எண்ணாக இருக்கக்கூடாது. மாற்று உறவினரின் எண்ணை உள்ளிடவும்.",
+            "te": "⚠️ భద్రతా విధానం: అత్యవసర సంప్రదింపు మొబైల్ సంఖ్య మీ ప్రాథమిక మొబైల్ సంఖ్యతో సమానంగా ఉండకూడదు. దయచేసి ప్రత్యామ్నాయ సంఖ్యను నమోదు చేయండి.",
+            "ml": "⚠️ സുരക്ഷാ നയം: അടിയന്തര സമ്പർക്ക മൊബൈൽ നമ്പർ നിങ്ങളുടെ പ്രാഥമിക മൊബൈൽ നമ്പറിന് തുല്യമാകരുത്. ദയവായി മറ്റൊരു നമ്പർ നൽകുക.",
+            "en": "⚠️ Security Policy: Emergency contact mobile cannot be the same as your primary mobile number. Please provide an alternate guardian or relative contact."
+        }
+        return False, msgs.get(lang_code, msgs["en"]), ""
+
+    return True, "", clean_emg
+
+
+def validate_emergency_email(emg_email: str, primary_email: str = "", lang: str = "en") -> Tuple[bool, str]:
+    """
+    Validates Emergency Contact Email Address.
+    Strictly enforces valid @gmail.com starting with a letter and ensures it is NOT identical to the patient's primary email.
+    """
+    lang_code = (lang or "en").lower()
+
+    if not emg_email or not emg_email.strip():
+        msgs = {
+            "kn": "ತುರ್ತು ಸಂಪರ್ಕ ಇಮೇಲ್ ಅಗತ್ಯವಿದೆ (ವೈದ್ಯಕೀಯ ವರದಿಗಳ ರವಾನೆಗಾಗಿ).",
+            "hi": "आपातकालीन संपर्क ईमेल आवश्यक है (चिकित्सीय रिपोर्ट प्रेषण हेतु)।",
+            "ta": "அவசர தொடர்பு மின்னஞ்சல் தேவை (மருத்துவ அறிக்கைகள் அனுப்ப).",
+            "te": "అత్యవసర సంప్రదింపు ఇమెయిల్ అవసరం (వైద్య నివేదికల పంపకం కోసం).",
+            "ml": "അടിയന്തര സമ്പർക്ക ഇമെയിൽ ആവശ്യമാണ് (ചികിത്സാ റിപ്പോർട്ടുകൾ അയയ്ക്കാൻ).",
+            "en": "Emergency contact email is required (for clinical report dispatch)."
+        }
+        return False, msgs.get(lang_code, msgs["en"])
+
+    is_valid, err_msg = validate_email(emg_email, allow_empty=False, lang=lang_code)
+    if not is_valid:
+        return False, err_msg
+
+    clean_emg_mail = emg_email.strip().lower()
+    clean_prim_mail = primary_email.strip().lower() if primary_email else ""
+
+    if clean_prim_mail and clean_emg_mail == clean_prim_mail:
+        msgs = {
+            "kn": "⚠️ ಭದ್ರತಾ ನೀತಿ: ತುರ್ತು ಸಂಪರ್ಕ ಇಮೇಲ್ ನಿಮ್ಮ ವೈಯಕ್ತಿಕ ಇಮೇಲ್ ವಿಳಾಸದಂತೆಯೇ ಇರಬಾರದು. ತುರ್ತು ರವಾನೆಗಾಗಿ ದಯವಿಟ್ಟು ಪ್ರತ್ಯೇಕ ಕುಟುಂಬ/ಸಂಬಂಧಿಕರ ಇಮೇಲ್ ನೀಡಿ.",
+            "hi": "⚠️ सुरक्षा नीति: आपातकालीन संपर्क ईमेल आपके व्यक्तिगत ईमेल के समान नहीं हो सकता। आपातकालीन प्रेषण के लिए कृपया अलग ईमेल दर्ज करें।",
+            "ta": "⚠️ பாதுகாப்பு கொள்கை: அவசர தொடர்பு மின்னஞ்சல் உங்கள் தனிப்பட்ட மின்னஞ்சலாக இருக்கக்கூடாது. மாற்று மின்னஞ்சலை உள்ளிடவும்.",
+            "te": "⚠️ భద్రతా విధానం: అత్యవసర సంప్రదింపు ఇమెయిల్ మీ వ్యక్తిగత ఇమెయిల్‌తో సమానంగా ఉండకూడదు. దయచేసి ప్రత్యామ్నాయ ఇమెయిల్‌ను నమోదు చేయండి.",
+            "ml": "⚠️ സുരക്ഷാ നയം: അടിയന്തര സമ്പർക്ക ഇമെയിൽ നിങ്ങളുടെ സ്വകാര്യ ഇമെയിലിന് തുല്യമാകരുത്. ദയവായി മറ്റൊരു ഇമെയിൽ നൽകുക.",
+            "en": "⚠️ Security Policy: Emergency contact email cannot be identical to your personal email address. Please provide a separate family/relative email for emergency clinical report dispatch."
+        }
+        return False, msgs.get(lang_code, msgs["en"])
+
+    return True, ""
+
+
 __all__ = [
     "validate_full_name",
     "validate_phone_number",
     "validate_email",
+    "validate_emergency_name",
+    "validate_emergency_phone",
+    "validate_emergency_email",
     "validate_pincode",
     "validate_doctor_reg",
     "validate_password",

@@ -114,6 +114,7 @@ def init_db():
             ("gps_coordinates", "TEXT"),
             ("emergency_contact_name", "TEXT"),
             ("emergency_contact_phone", "TEXT"),
+            ("emergency_contact_email", "TEXT"),
             ("specialization", "TEXT"),
             ("experience_years", "INTEGER"),
             ("blood_group", "TEXT"),
@@ -430,6 +431,7 @@ def create_user(
     gps_coordinates: Optional[str] = None,
     emergency_contact_name: Optional[str] = None,
     emergency_contact_phone: Optional[str] = None,
+    emergency_contact_email: Optional[str] = None,
     specialization: Optional[str] = None,
     experience_years: Optional[int] = None,
     blood_group: Optional[str] = None
@@ -472,9 +474,9 @@ def create_user(
             INSERT INTO users (
                 username, password_hash, full_name, role, phone, reg_number, organization,
                 email, age, gender, address, city, state, pincode, gps_coordinates,
-                emergency_contact_name, emergency_contact_phone, specialization, experience_years, blood_group
+                emergency_contact_name, emergency_contact_phone, emergency_contact_email, specialization, experience_years, blood_group
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             clean_user,
             hashed_pw,
@@ -493,6 +495,7 @@ def create_user(
             gps_coordinates,
             emergency_contact_name.strip() if emergency_contact_name else None,
             emergency_contact_phone.strip() if emergency_contact_phone else None,
+            emergency_contact_email.strip() if emergency_contact_email else None,
             specialization.strip() if specialization else None,
             experience_years,
             blood_group

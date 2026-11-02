@@ -31,6 +31,9 @@ from src.security.guardrails import (
     validate_full_name,
     validate_phone_number,
     validate_email,
+    validate_emergency_name,
+    validate_emergency_phone,
+    validate_emergency_email,
     validate_pincode,
     validate_doctor_reg,
     validate_password,
@@ -855,25 +858,48 @@ def render_auth_page():
             # ---------------- Personal & Contact Details ----------------
             st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 10px; margin-bottom: 4px;'>{t.get('signup_personal_sec', 'Personal & Contact Information')}</div>", unsafe_allow_html=True)
 
-            # Full Name (Letters only - Strictly validated)
+            # 1. Full Name (Letters only - Strictly validated with immediate inline feedback)
             new_name = st.text_input(
                 t.get("signup_fullname_label", "Full Name (Alphabetic letters & spaces only):"),
                 placeholder=t.get("placeholder_name", "e.g. Ramesh Hegde / Ananya Rao"),
                 key="signup_name_input"
             ).strip()
 
-            # 10-Digit Mobile Contact (Strictly validated)
+            if new_name:
+                valid_name, name_err = validate_full_name(new_name, lang=ui_lang)
+                if not valid_name:
+                    st.markdown(f"<div style='color: #dc2626; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px;'>❌ {name_err}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div style='color: #16a34a; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px 10px;'>{t.get('badge_valid_name', '✓ Valid Patient Full Name')}</div>", unsafe_allow_html=True)
+
+            # 2. 10-Digit Mobile Contact (Strictly validated with immediate inline feedback)
             new_phone = st.text_input(
                 t.get("signup_mobile_label", "Mobile Contact (10-Digit Indian Mobile Number):"),
                 placeholder=t.get("placeholder_phone", "e.g. 9845012345"),
                 key="signup_phone_input"
             ).strip()
 
+            cleaned_phone = ""
+            if new_phone:
+                valid_phone, phone_err, cleaned_phone = validate_phone_number(new_phone, lang=ui_lang)
+                if not valid_phone:
+                    st.markdown(f"<div style='color: #dc2626; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px;'>❌ {phone_err}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div style='color: #16a34a; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px 10px;'>{t.get('badge_valid_phone', '✓ Valid 10-Digit Indian Mobile Number')} (+91 {cleaned_phone})</div>", unsafe_allow_html=True)
+
+            # 3. Email Address (Required @gmail.com - strictly enforced with immediate inline feedback)
             new_email = st.text_input(
-                t.get("signup_email_label", "Email Address (Optional):"),
-                placeholder=t.get("placeholder_email", "e.g. user@hospital.org"),
+                t.get("signup_email_label", "Email Address (Required @gmail.com):").replace("(Optional)", "(Required @gmail.com)"),
+                placeholder="e.g. ananya.rao@gmail.com",
                 key="signup_email_input"
             ).strip()
+
+            if new_email:
+                valid_email, email_err = validate_email(new_email, allow_empty=False, lang=ui_lang)
+                if not valid_email:
+                    st.markdown(f"<div style='color: #dc2626; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px;'>❌ {email_err}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div style='color: #16a34a; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px 10px;'>{t.get('badge_valid_email', '✓ Verified @gmail.com Address Format')}</div>", unsafe_allow_html=True)
 
             col_age, col_gen = st.columns(2)
             with col_age:
@@ -894,23 +920,62 @@ def render_auth_page():
 
             # ---------------- Patient Demographics & Health Profile ----------------
             st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>{t.get('signup_patient_sec', 'Patient Clinical Demographics')}</div>", unsafe_allow_html=True)
-            blood_options = ["Unknown / Not Tested", "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]
-            blood_labels = {
-                "Unknown / Not Tested": t.get("blood_unknown", "Unknown / Not Tested"),
-                "A+": "A+", "A-": "A-", "B+": "B+", "B-": "B-", "O+": "O+", "O-": "O-", "AB+": "AB+", "AB-": "AB-"
-            }
+            blood_prompt = t.get("blood_select_prompt", "-- Select Verified Blood Group --")
+            blood_options = [blood_prompt, "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]
             patient_blood_group = st.selectbox(
-                t.get("signup_blood_group_label", "Blood Group:"),
+                t.get("signup_blood_group_label", "Blood Group (Required for Emergency Safety):"),
                 blood_options,
-                format_func=lambda k: blood_labels.get(k, k),
                 key="signup_blood_group"
             )
 
+            if patient_blood_group == blood_prompt:
+                st.markdown(f"<div style='color: #b45309; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 4px 10px;'>⚠️ {t.get('err_blood_group_required', 'Please select a verified clinical blood group before proceeding.')}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div style='color: #16a34a; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px 10px;'>✓ {patient_blood_group} Clinical Blood Group Verified</div>", unsafe_allow_html=True)
+
             col_emg1, col_emg2 = st.columns(2)
             with col_emg1:
-                patient_emg_name = st.text_input(t.get("signup_emg_name_label", "Emergency Contact Person:"), placeholder=t.get("placeholder_emg_name", "e.g. Suresh Kumar (Brother)"), key="signup_emg_name").strip()
+                patient_emg_name = st.text_input(
+                    t.get("signup_emg_name_label", "Emergency Contact Person (Alphabetic letters only):"),
+                    placeholder=t.get("placeholder_emg_name", "e.g. Suresh Kumar (Brother)"),
+                    key="signup_emg_name"
+                ).strip()
+
+                if patient_emg_name:
+                    valid_emg_n, emg_n_err = validate_emergency_name(patient_emg_name, lang=ui_lang)
+                    if not valid_emg_n:
+                        st.markdown(f"<div style='color: #dc2626; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px;'>❌ {emg_n_err}</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<div style='color: #16a34a; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px 10px;'>{t.get('badge_valid_emg_name', '✓ Valid Emergency Contact Name')}</div>", unsafe_allow_html=True)
+
             with col_emg2:
-                patient_emg_phone = st.text_input(t.get("signup_emg_phone_label", "Emergency Contact Mobile:"), placeholder="e.g. 9448199999", key="signup_emg_phone").strip()
+                patient_emg_phone = st.text_input(
+                    t.get("signup_emg_phone_label", "Emergency Contact Mobile (Different from primary):"),
+                    placeholder="e.g. 9448199999",
+                    key="signup_emg_phone"
+                ).strip()
+
+                cleaned_emg_phone = ""
+                if patient_emg_phone:
+                    valid_emg_p, emg_p_err, cleaned_emg_phone = validate_emergency_phone(patient_emg_phone, primary_phone=new_phone, lang=ui_lang)
+                    if not valid_emg_p:
+                        st.markdown(f"<div style='color: #dc2626; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px;'>❌ {emg_p_err}</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<div style='color: #16a34a; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px 10px;'>{t.get('badge_valid_emg_phone', '✓ Verified Emergency Mobile')} (+91 {cleaned_emg_phone})</div>", unsafe_allow_html=True)
+
+            # Emergency Contact Email (NEW FIELD - for dispatching emergency clinical reports)
+            patient_emg_email = st.text_input(
+                t.get("signup_emg_email_label", "Emergency Contact Email (for Clinical Dispatch):"),
+                placeholder=t.get("placeholder_emg_email", "e.g. guardian@gmail.com"),
+                key="signup_emg_email"
+            ).strip()
+
+            if patient_emg_email:
+                valid_emg_m, emg_m_err = validate_emergency_email(patient_emg_email, primary_email=new_email, lang=ui_lang)
+                if not valid_emg_m:
+                    st.markdown(f"<div style='color: #dc2626; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px;'>❌ {emg_m_err}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div style='color: #16a34a; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px 10px;'>{t.get('badge_valid_emg_email', '✓ Verified Emergency Email')}</div>", unsafe_allow_html=True)
 
             # ---------------- Location & Geolocation Section ----------------
             st.markdown(f"<div style='font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-top: 12px; margin-bottom: 4px;'>{t.get('signup_addr_sec', 'Address & Location (GPS Auto-Detection or Manual)')}</div>", unsafe_allow_html=True)
@@ -960,6 +1025,14 @@ def render_auth_page():
                     value=st.session_state.get("signup_loc_pincode", "574211"),
                     key="signup_addr_pincode"
                 ).strip()
+
+                if address_pincode:
+                    valid_pin, pin_err = validate_pincode(address_pincode, lang=ui_lang)
+                    if not valid_pin:
+                        st.markdown(f"<div style='color: #dc2626; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px;'>❌ {pin_err}</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<div style='color: #16a34a; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px 10px;'>✓ Valid Postal Pincode ({address_pincode})</div>", unsafe_allow_html=True)
+
             with col_coord:
                 gps_coords = st.text_input(
                     t.get("signup_coords_label", "GPS Coordinates (Lat/Long):"),
@@ -985,57 +1058,88 @@ def render_auth_page():
                     key="signup_pw2"
                 )
 
+            # Instant Real-Time Password Comparison Feedback
+            if new_pw or confirm_pw:
+                if len(new_pw) < 6:
+                    st.markdown(f"<div style='color: #b45309; font-size: 0.82rem; font-weight: 600; margin-top: 2px; margin-bottom: 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 6px 12px;'>⚠️ {t.get('err_pw_min_length', 'Password must be at least 6 characters long.')} ({len(new_pw)}/6 chars)</div>", unsafe_allow_html=True)
+                elif confirm_pw:
+                    if new_pw != confirm_pw:
+                        st.markdown(f"<div style='color: #b91c1c; font-size: 0.82rem; font-weight: 700; margin-top: 2px; margin-bottom: 10px; background: #fef2f2; border: 1px solid #f87171; border-radius: 6px; padding: 6px 12px;'>{t.get('badge_pw_mismatch', '❌ Passwords do not match! Please enter identical passwords in both fields.')}</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<div style='color: #15803d; font-size: 0.82rem; font-weight: 700; margin-top: 2px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 6px 12px;'>{t.get('badge_pw_match', '✓ Passwords match successfully! Ready for secure registration.')}</div>", unsafe_allow_html=True)
+
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
             if st.button(t.get("signup_btn_submit", "📝 Register & Create Secured Account"), type="primary", use_container_width=True, key="btn_signup_submit"):
-                # ================= VALIDATION PIPELINE =================
+                # ================= STRICT VALIDATION PIPELINE =================
+                errors = []
 
-                # 1. Full Name Validation (Strictly reject numbers, digits, symbols) with i18n
+                # 1. Full Name Validation
                 valid_name, name_err = validate_full_name(new_name, lang=ui_lang)
                 if not valid_name:
-                    hdr = t.get("err_hdr_fullname", "Full Name Validation Error:")
-                    st.error(f"⚠️ {hdr} {name_err}")
-                    st.stop()
+                    errors.append(name_err)
 
-                # 2. Mobile Number Validation (Strictly 10 digits, starts 6-9) with i18n
+                # 2. Mobile Number Validation
                 valid_phone, phone_err, cleaned_phone = validate_phone_number(new_phone, lang=ui_lang)
                 if not valid_phone:
-                    hdr = t.get("err_hdr_phone", "Mobile Phone Validation Error:")
-                    st.error(f"⚠️ {hdr} {phone_err}")
-                    st.stop()
+                    errors.append(phone_err)
 
-                # 3. Email Validation (if provided) with i18n
-                if new_email:
-                    valid_email, email_err = validate_email(new_email, lang=ui_lang)
+                # 3. Email Validation (Mandatory)
+                if not new_email:
+                    errors.append(t.get("err_email_required", "Email address is required (@gmail.com only)."))
+                else:
+                    valid_email, email_err = validate_email(new_email, allow_empty=False, lang=ui_lang)
                     if not valid_email:
-                        hdr = t.get("err_hdr_email", "Email Security Error:")
-                        st.error(f"⚠️ {hdr} {email_err}")
-                        st.stop()
+                        errors.append(email_err)
 
-                # 4. Postal Pincode Validation with i18n
-                if address_pincode:
-                    valid_pin, pin_err = validate_pincode(address_pincode, lang=ui_lang)
-                    if not valid_pin:
-                        hdr = t.get("err_hdr_pincode", "Postal Pincode Error:")
-                        st.error(f"⚠️ {hdr} {pin_err}")
-                        st.stop()
+                # 4. Blood Group Selection (Mandatory)
+                if not patient_blood_group or patient_blood_group == blood_prompt:
+                    errors.append(t.get("err_blood_group_required", "Please select a verified clinical blood group before proceeding."))
 
-                # 5. Role is strictly 'patient' for public self-registration
-                role_code = "patient"
-                doc_reg_val = None
-                hosp_val = None
-                doc_spec_val = None
-                doc_exp_val = None
+                # 5. Emergency Contact Name (Mandatory)
+                valid_emg_n, emg_n_err = validate_emergency_name(patient_emg_name, lang=ui_lang)
+                if not valid_emg_n:
+                    errors.append(emg_n_err)
 
-                # 6. Password Strength and Confirm Password Matching with i18n
+                # 6. Emergency Contact Mobile (Mandatory & Different from primary)
+                valid_emg_p, emg_p_err, cleaned_emg_phone = validate_emergency_phone(patient_emg_phone, primary_phone=new_phone, lang=ui_lang)
+                if not valid_emg_p:
+                    errors.append(emg_p_err)
+
+                # 7. Emergency Contact Email (Mandatory & Different from primary)
+                valid_emg_m, emg_m_err = validate_emergency_email(patient_emg_email, primary_email=new_email, lang=ui_lang)
+                if not valid_emg_m:
+                    errors.append(emg_m_err)
+
+                # 8. Address Street (Mandatory)
+                if not address_street or len(address_street.strip()) < 3:
+                    errors.append(t.get("err_street_required", "Street address is required."))
+
+                # 9. City & State (Mandatory)
+                if not address_city or not address_city.strip():
+                    errors.append(t.get("err_city_required", "City is required."))
+                if not address_state or not address_state.strip():
+                    errors.append(t.get("err_state_required", "State is required."))
+
+                # 10. Postal Pincode (Mandatory)
+                valid_pin, pin_err = validate_pincode(address_pincode, lang=ui_lang)
+                if not valid_pin:
+                    errors.append(pin_err)
+
+                # 11. Password Strength and Matching (Mandatory)
                 valid_pw, pw_err = validate_password(new_pw, confirm_pw, lang=ui_lang)
                 if not valid_pw:
-                    hdr = t.get("err_hdr_password", "Password Security Error:")
-                    st.error(f"⚠️ {hdr} {pw_err}")
+                    errors.append(pw_err)
+
+                # Halt if ANY error detected
+                if errors:
+                    st.error(t.get("err_all_fields_mandatory", "All fields are strictly mandatory for clinical registration. Please complete all highlighted fields:"))
+                    for err in errors:
+                        st.markdown(f"<div style='color: #dc2626; font-size: 0.84rem; font-weight: 600; padding: 2px 0;'>• {err}</div>", unsafe_allow_html=True)
                     st.stop()
 
                 # ================= DATABASE INSERTION =================
-                # Generate unique clean patient username
+                role_code = "patient"
                 clean_name_parts = [p.lower() for p in new_name.split() if p.isalpha()]
                 first_name_str = clean_name_parts[0] if clean_name_parts else "user"
                 username_candidate = f"patient.{first_name_str}_{cleaned_phone[-4:]}"
@@ -1046,21 +1150,22 @@ def render_auth_page():
                     full_name=new_name,
                     role=role_code,
                     phone=cleaned_phone,
-                    reg_number=doc_reg_val,
-                    organization=hosp_val,
-                    email=new_email if new_email else None,
+                    reg_number=None,
+                    organization=None,
+                    email=new_email.strip().lower(),
                     age=int(new_age),
                     gender=new_gender,
-                    address=address_street if address_street else None,
-                    city=address_city if address_city else None,
-                    state=address_state if address_state else None,
-                    pincode=address_pincode if address_pincode else None,
-                    gps_coordinates=gps_coords if gps_coords else None,
-                    emergency_contact_name=patient_emg_name if patient_emg_name else None,
-                    emergency_contact_phone=patient_emg_phone if patient_emg_phone else None,
-                    specialization=doc_spec_val if doc_spec_val else None,
-                    experience_years=int(doc_exp_val) if doc_exp_val else None,
-                    blood_group=patient_blood_group if patient_blood_group else None
+                    address=address_street.strip(),
+                    city=address_city.strip(),
+                    state=address_state.strip(),
+                    pincode=address_pincode.strip(),
+                    gps_coordinates=gps_coords.strip() if gps_coords else None,
+                    emergency_contact_name=patient_emg_name.strip(),
+                    emergency_contact_phone=cleaned_emg_phone,
+                    emergency_contact_email=patient_emg_email.strip().lower(),
+                    specialization=None,
+                    experience_years=None,
+                    blood_group=patient_blood_group
                 )
 
                 if not success:
