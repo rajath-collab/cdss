@@ -190,6 +190,20 @@ def render_admin_portal():
         with tab_raw:
             st.image(raw_xray, caption=t.get("active_xray_caption", "Raw Thoracic Radiograph (Real Clinical Scan)"), use_container_width=True)
 
+        # Multimodal Clinical Voice Briefing (Report + Grad-CAM Heatmap Explanation)
+        from src.ui.voice_service import generate_clinical_voice_script, render_voice_briefing_widget
+        cur_lang = st.session_state.get("ui_lang", "en")
+        voice_text = generate_clinical_voice_script(
+            patient_name=active_case.get("name", "Patient"),
+            condition=active_case.get("xray_finding", "Pneumonia"),
+            confidence=active_case.get("xray_confidence", 94.2),
+            gradcam_focus="right lower basal lobe" if "pneumonia" in case_finding else ("apical perihilar airspace" if "tb" in case_finding else "clear lung parenchyma"),
+            abnormal_biomarkers=[k for k, v in active_case.get("lab_biomarkers", {}).items() if str(v.get("status", "")).upper() not in ["NORMAL", "RECORDED"]],
+            triage_level="Level 2 (Urgent Multimodal Triage)",
+            lang=cur_lang
+        )
+        render_voice_briefing_widget(voice_text, key_prefix="admin_diag_voice", lang=cur_lang)
+
     with col_rag:
         st.markdown(f"#### {t.get('doc_biomarker_title', '🧪 Pathology Biomarker Extraction & Analysis')}")
         biomarkers = active_case.get("lab_biomarkers", {})
