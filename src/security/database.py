@@ -140,7 +140,7 @@ def init_db():
         # 3. Pre-seed Default Verified Accounts if users table is empty
         seed_accounts = [
             {
-                "username": "dr.ramesh",
+                "username": "ramesh",
                 "password": "doctor123",
                 "full_name": "Dr. Ramesh Rao, MD",
                 "role": "doctor",
@@ -157,7 +157,7 @@ def init_db():
                 "experience_years": 18
             },
             {
-                "username": "dr.priya",
+                "username": "priya",
                 "password": "doctor123",
                 "full_name": "Dr. Priya Shenoy, MD",
                 "role": "doctor",
@@ -174,7 +174,7 @@ def init_db():
                 "experience_years": 14
             },
             {
-                "username": "patient.rajesh",
+                "username": "rajesh",
                 "password": "patient123",
                 "full_name": "Rajesh Kumar",
                 "role": "patient",
@@ -193,7 +193,7 @@ def init_db():
                 "emergency_contact_phone": "9448199999"
             },
             {
-                "username": "asha.sunita",
+                "username": "sunita",
                 "password": "asha123",
                 "full_name": "Sunita Naik",
                 "role": "asha",
@@ -208,7 +208,7 @@ def init_db():
                 "pincode": "574231"
             },
             {
-                "username": "admin.chief",
+                "username": "admin",
                 "password": "admin123",
                 "full_name": "Dr. K. V. Hegde (Medical Superintendent)",
                 "role": "admin",
@@ -266,7 +266,7 @@ def init_db():
             """)
         else:
             # Ensure admin.chief account exists
-            cursor.execute("SELECT id FROM users WHERE username = 'admin.chief'")
+            cursor.execute("SELECT id FROM users WHERE username = 'admin'")
             if not cursor.fetchone():
                 admin_pw = hash_password("admin123")
                 cursor.execute("""
@@ -308,45 +308,91 @@ def init_db():
 
 def get_user_by_identifier(identifier: str) -> Optional[Dict[str, Any]]:
     """
-    Looks up user by:
-      - exact username (e.g. 'dr.ramesh', 'patient.rajesh')
+    Smart resilient user lookup matching:
+      - Clean normal username (e.g. 'ananya', 'rajesh', 'ramesh')
+      - Dotted legacy username (e.g. 'patient.rajesh', 'dr.ramesh')
+      - Full Name (e.g. 'Ananya Rao', 'Rajesh Kumar')
       - 10-digit phone number (e.g. '9845012345')
-      - Medical Council Registration Number (e.g. 'KMC-58291')
+      - Registered Email address
+      - Medical Council Registration Number
     """
     if not identifier:
         return None
 
     clean = identifier.strip()
     clean_lower = clean.lower()
+
+    # Strip prefixes if entered by user (e.g. patient.ananya -> ananya)
+    stripped = clean_lower
+    for prefix in ["patient.", "dr.", "asha.", "admin.", "test."]:
+        if stripped.startswith(prefix):
+            stripped = stripped[len(prefix):]
+            break
+
     digits_only = "".join(c for c in clean if c.isdigit())
     if digits_only.startswith("91") and len(digits_only) == 12:
         digits_only = digits_only[2:]
 
     with get_db() as conn:
         cursor = conn.cursor()
+        # 1. Exact match by clean username, stripped username, phone, reg_number, or email
         cursor.execute("""
             SELECT * FROM users
             WHERE LOWER(username) = ? 
+               OR LOWER(username) = ? 
                OR phone = ? 
                OR UPPER(reg_number) = ?
                OR LOWER(phone) = ?
                OR LOWER(email) = ?
             LIMIT 1
-        """, (clean_lower, digits_only if len(digits_only) == 10 else clean, clean.upper(), clean_lower, clean_lower))
+        """, (clean_lower, stripped, digits_only if len(digits_only) == 10 else clean, clean.upper(), clean_lower, clean_lower))
         row = cursor.fetchone()
         if row:
             return dict(row)
+
+        # 2. Match by Full Name
+        cursor.execute("SELECT * FROM users WHERE LOWER(full_name) = ? LIMIT 1", (clean_lower,))
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
+
+        # 3. Match by partial username or full name
+        cursor.execute("""
+            SELECT * FROM users
+            WHERE LOWER(username) LIKE ? 
+               OR LOWER(full_name) LIKE ?
+            LIMIT 1
+        """, (f"{stripped}%", f"{clean_lower}%"))
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
+
     return None
 
 
 def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
-    """Strictly looks up user by unique username (case-insensitive)."""
+    """Smart resilient lookup by username or alias."""
     if not username:
         return None
     clean = username.strip().lower()
+
+    # Strip prefixes if entered
+    stripped = clean
+    for prefix in ["patient.", "dr.", "asha.", "admin.", "test."]:
+        if stripped.startswith(prefix):
+            stripped = stripped[len(prefix):]
+            break
+
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? LIMIT 1", (clean,))
+        cursor.execute("""
+            SELECT * FROM users 
+            WHERE LOWER(username) = ? 
+               OR LOWER(username) = ? 
+               OR LOWER(full_name) = ?
+               OR LOWER(username) LIKE ?
+            LIMIT 1
+        """, (clean, stripped, clean, f"{stripped}%"))
         row = cursor.fetchone()
         if row:
             return dict(row)

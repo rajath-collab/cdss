@@ -213,7 +213,7 @@ def render_restricted_admin_portal():
                     if not v_adm_pw:
                         st.error(adm_pw_err)
                         st.stop()
-                    success, msg = update_user_password("admin.chief", new_adm_pw1)
+                    success, msg = update_user_password("admin", new_adm_pw1)
                     if success:
                         st.session_state["admin_forgot_mode"] = False
                         st.session_state.pop("adm_email_otp", None)
@@ -703,7 +703,7 @@ def render_auth_page():
                 with col_pat_ident:
                     recov_identity = st.text_input(
                         t.get("recovery_ident_label", "Enter your @gmail.com Address or Username:"),
-                        placeholder=t.get("recovery_ident_placeholder", "e.g. yourname@gmail.com or patient.rajesh"),
+                        placeholder=t.get("recovery_ident_placeholder", "e.g. yourname@gmail.com or rajesh"),
                         key="recov_pat_identity"
                     ).strip()
                 with col_pat_send:
@@ -820,7 +820,7 @@ def render_auth_page():
 
                         if not target_uname:
                             user = get_user_by_username(recov_identity)
-                            target_uname = user["username"] if user else "patient.rajesh"
+                            target_uname = user["username"] if user else "rajesh"
 
                         success, msg = update_user_password(target_uname, new_pat_pw1)
                         if success:
@@ -844,7 +844,7 @@ def render_auth_page():
 
                 login_username = st.text_input(
                     t.get("auth_username_label", "Username:"),
-                    placeholder=t.get("placeholder_username", "e.g. dr.ramesh, dr.priya, patient.rajesh"),
+                    placeholder=t.get("placeholder_username", "e.g. ananya, rajesh, ramesh"),
                     key="login_step1_username"
                 ).strip()
 
@@ -1159,6 +1159,23 @@ def render_auth_page():
                 else:
                     st.markdown(f"<div style='color: #16a34a; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px 10px;'>{t.get('badge_valid_name', '✓ Valid Patient Full Name')}</div>", unsafe_allow_html=True)
 
+            # 2. Account Username (Normal clean username without dots or prefixes)
+            new_username = st.text_input(
+                t.get("signup_username_label", "Choose Account Username (e.g. ananya):"),
+                placeholder=t.get("placeholder_signup_username", "e.g. ananya (Letters & numbers only, no dots)"),
+                key="signup_username_input"
+            ).strip()
+
+            if new_username:
+                if "." in new_username:
+                    st.markdown(f"<div style='color: #dc2626; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px;'>❌ {t.get('err_username_no_dots', 'Usernames cannot contain dots (.). Use letters, numbers, or underscore only (e.g. ananya).')}</div>", unsafe_allow_html=True)
+                elif new_username.lower().startswith("patient."):
+                    st.markdown(f"<div style='color: #dc2626; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px;'>❌ {t.get('err_username_no_prefix', 'Do not add "patient." prefix. Enter a simple normal username like ananya or rajesh.')}</div>", unsafe_allow_html=True)
+                elif not re.match(r'^[a-zA-Z0-9_]{3,25}$', new_username):
+                    st.markdown(f"<div style='color: #dc2626; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px;'>❌ {t.get('err_username_format', 'Username must be 3-25 alphanumeric characters (a-z, 0-9, _).')}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div style='color: #16a34a; font-size: 0.82rem; font-weight: 600; margin-top: -8px; margin-bottom: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px 10px;'>✓ {t.get('badge_valid_username', 'Valid Username:')} <code>{new_username.lower()}</code></div>", unsafe_allow_html=True)
+
             # 2. 10-Digit Mobile Contact (Strictly validated with immediate inline feedback)
             new_phone = st.text_input(
                 t.get("signup_mobile_label", "Mobile Contact (10-Digit Indian Mobile Number):"),
@@ -1458,9 +1475,22 @@ def render_auth_page():
 
                 # ================= DATABASE INSERTION =================
                 role_code = "patient"
-                clean_name_parts = [p.lower() for p in new_name.split() if p.isalpha()]
-                first_name_str = clean_name_parts[0] if clean_name_parts else "user"
-                username_candidate = f"patient.{first_name_str}_{cleaned_phone[-4:]}"
+                # Determine clean normal username (chosen by user or derived from name)
+                if new_username:
+                    username_candidate = re.sub(r'[^a-zA-Z0-9_]', '', new_username).lower()
+                else:
+                    clean_name_parts = [p.lower() for p in new_name.split() if p.isalpha()]
+                    username_candidate = clean_name_parts[0] if clean_name_parts else "user"
+
+                # Check uniqueness in database
+                existing_u = get_user_by_username(username_candidate)
+                if existing_u:
+                    if new_username:
+                        errors.append(f"❌ Username '{username_candidate}' is already taken. Please choose another username (e.g. {username_candidate}{cleaned_phone[-4:]}).")
+                        st.error(errors[-1])
+                        st.stop()
+                    else:
+                        username_candidate = f"{username_candidate}_{cleaned_phone[-4:]}"
 
                 success, msg, created_user_record = create_user(
                     username=username_candidate,
