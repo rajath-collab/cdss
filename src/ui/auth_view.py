@@ -108,10 +108,10 @@ def render_restricted_admin_portal():
                             ADMINISTRATOR RECOVERY
                         </div>
                         <div style="font-size: 1.65rem; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; margin-top: 4px;">
-                            Reset Admin Password via Verified Gmail OTP
+                            Reset Admin Password
                         </div>
                         <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 4px;">
-                            Dispatches real single-use OTP via SMTP to verified @gmail.com address. Temporary/disposable domains are strictly prohibited.
+                            Hospital Medical Directorate Security Credential Recovery
                         </div>
                     </div>
                 </div>
@@ -146,31 +146,11 @@ def render_restricted_admin_portal():
                         st.rerun()
 
             if st.session_state.get("adm_otp_sent"):
-                if not st.session_state.get("adm_is_offline", False):
-                    st.success(f"📬 **Verification Code Dispatched:** An OTP has been sent from system sender (`th8295979@gmail.com`) to **`{st.session_state.get('adm_target_email')}`**. Please check your Gmail inbox.")
-                else:
-                    adm_code = st.session_state.get('adm_email_otp', '')
-                    st.markdown(f'''
-                        <div style="background: rgba(2, 132, 199, 0.12); border: 1px solid #0284c7; border-left: 5px solid #38bdf8; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px;">
-                            <div style="font-weight: 700; color: #38bdf8; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
-                                <span>🌐</span> {t.get('offline_banner_title', 'OFFLINE / RURAL PHC EMERGENCY DISPATCH (Viva / Lab Mode)')}
-                            </div>
-                            <div style="font-size: 0.82rem; color: #cbd5e1; margin-top: 4px; line-height: 1.5;">
-                                {t.get('offline_banner_desc', 'Internet / SMTP connection is unreachable (Offline Clinic / Demonstration Mode). For clinical continuity, your single-use verification code is:')}
-                                <span style="display: inline-block; background: #0f172a; border: 1px dashed #38bdf8; font-family: monospace; font-size: 1.25rem; font-weight: 800; color: #38bdf8; padding: 3px 12px; border-radius: 6px; margin: 4px 6px;">
-                                    {adm_code}
-                                </span>
-                            </div>
-                            <div style="font-size: 0.74rem; color: #94a3b8; margin-top: 4px;">
-                                {t.get('offline_banner_tip', '💡 Enter this 6-digit code below to verify your identity and update password.')}
-                            </div>
-                        </div>
-                    ''', unsafe_allow_html=True)
+                st.success(f"📬 **Verification Code Dispatched:** A single-use verification code has been dispatched to **`{st.session_state.get('adm_target_email')}`**. Please check your inbox.")
 
             admin_otp_entered = st.text_input(
                 t.get("admin_otp_label", "Enter 6-Digit Email OTP or Master Key:"),
-                value=st.session_state.get("adm_email_otp", "") if st.session_state.get("adm_is_offline", False) else "",
-                placeholder=t.get("otp_input_placeholder", "Enter code received in your Gmail"),
+                placeholder=t.get("otp_input_placeholder", "Enter 6-digit verification code"),
                 key="recov_adm_otp_input"
             ).strip()
 
@@ -466,6 +446,218 @@ def render_auth_page():
         )
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
+        # Inject Instant Real-Time Client-Side Validation Engine
+        st.html(r'''<script>
+(function() {
+        if (window._medfuse_live_guardrails_initialized) return;
+        window._medfuse_live_guardrails_initialized = true;
+
+        function getOrCreateFeedback(inputElem, fieldId) {
+            let container = inputElem.closest('div[data-testid="stTextInput"]') || inputElem.parentElement;
+            let existing = container.querySelector('#' + fieldId);
+            if (!existing) {
+                existing = document.createElement('div');
+                existing.id = fieldId;
+                existing.className = 'medfuse-live-feedback';
+                container.appendChild(existing);
+            }
+            return existing;
+        }
+
+        function removeFeedback(inputElem, fieldId) {
+            let container = inputElem.closest('div[data-testid="stTextInput"]') || inputElem.parentElement;
+            let existing = container.querySelector('#' + fieldId);
+            if (existing) existing.remove();
+            inputElem.style.borderColor = '';
+            inputElem.style.backgroundColor = '';
+            inputElem.style.boxShadow = '';
+        }
+
+        function setValid(inputElem, fieldId, msg) {
+            let fb = getOrCreateFeedback(inputElem, fieldId);
+            fb.innerHTML = `<div style="color: #15803d; font-size: 0.81rem; font-weight: 600; margin-top: 4px; margin-bottom: 6px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 4px 10px; display: flex; align-items: center; gap: 6px;"><span>✓</span><span>${msg}</span></div>`;
+            inputElem.style.borderColor = '#16a34a';
+            inputElem.style.backgroundColor = '#f0fdf4';
+            inputElem.style.boxShadow = '0 0 0 1px #16a34a';
+        }
+
+        function setInvalid(inputElem, fieldId, msg) {
+            let fb = getOrCreateFeedback(inputElem, fieldId);
+            fb.innerHTML = `<div style="color: #b91c1c; font-size: 0.81rem; font-weight: 600; margin-top: 4px; margin-bottom: 6px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; padding: 4px 10px; display: flex; align-items: center; gap: 6px;"><span>❌</span><span>${msg}</span></div>`;
+            inputElem.style.borderColor = '#dc2626';
+            inputElem.style.backgroundColor = '#fef2f2';
+            inputElem.style.boxShadow = '0 0 0 1px #dc2626';
+        }
+
+        document.addEventListener('input', handleLiveValidation, true);
+        document.addEventListener('keyup', handleLiveValidation, true);
+        document.addEventListener('blur', handleLiveValidation, true);
+
+        function handleLiveValidation(e) {
+            const target = e.target;
+            if (!target || target.tagName !== 'INPUT') return;
+
+            const placeholder = (target.placeholder || '').toLowerCase();
+            const ariaLabel = (target.getAttribute('aria-label') || '').toLowerCase();
+            const val = target.value;
+
+            // 1. FULL NAME VALIDATION
+            if (placeholder.includes('ramesh hegde') || ariaLabel.includes('full name') || ariaLabel.includes('ಹೆಸರು') || ariaLabel.includes('नाम')) {
+                if (!val || val.trim().length === 0) {
+                    removeFeedback(target, 'fb_fullname');
+                    return;
+                }
+                if (/\d/.test(val)) {
+                    setInvalid(target, 'fb_fullname', 'Full Name must contain alphabetic letters and spaces only. Numbers (e.g. 56666) are strictly prohibited.');
+                } else if (/[^a-zA-Z\s\.\']/.test(val)) {
+                    setInvalid(target, 'fb_fullname', 'Full Name contains invalid characters. Letters and spaces only.');
+                } else if (val.trim().length < 3) {
+                    setInvalid(target, 'fb_fullname', 'Full Name must be at least 3 alphabetic characters long.');
+                } else {
+                    setValid(target, 'fb_fullname', 'Valid Patient Full Name');
+                }
+            }
+
+            // 2. PRIMARY MOBILE NUMBER VALIDATION
+            else if (placeholder.includes('9845012345') || (ariaLabel.includes('mobile contact') && !ariaLabel.includes('emergency'))) {
+                if (!val || val.trim().length === 0) {
+                    removeFeedback(target, 'fb_primary_mobile');
+                    return;
+                }
+                const cleanDigits = val.replace(/\D/g, '');
+                if (cleanDigits.length > 0 && !['6', '7', '8', '9'].includes(cleanDigits[0])) {
+                    setInvalid(target, 'fb_primary_mobile', 'Mobile number must start with 6, 7, 8, or 9 (Standard Indian Mobile Number).');
+                } else if (cleanDigits.length !== 10) {
+                    setInvalid(target, 'fb_primary_mobile', `Mobile number must be exactly 10 digits (currently ${cleanDigits.length} digits).`);
+                } else {
+                    setValid(target, 'fb_primary_mobile', `Valid 10-Digit Indian Mobile (+91 ${cleanDigits})`);
+                }
+            }
+
+            // 3. PRIMARY EMAIL ADDRESS VALIDATION (STRICT GMAIL ONLY)
+            else if (placeholder.includes('ananya.rao@gmail.com') || (ariaLabel.includes('email address') && !ariaLabel.includes('emergency'))) {
+                if (!val || val.trim().length === 0) {
+                    removeFeedback(target, 'fb_primary_email');
+                    return;
+                }
+                const cleanMail = val.trim().toLowerCase();
+                const userPart = cleanMail.split('@')[0];
+
+                if (/^\d/.test(userPart)) {
+                    setInvalid(target, 'fb_primary_email', `Email username '${userPart}' cannot start with numbers (e.g. 123@gmail.com, 1233@gmail.com). Must start with an alphabetic letter.`);
+                } else if (/^\d+$/.test(userPart)) {
+                    setInvalid(target, 'fb_primary_email', 'Email username cannot be composed entirely of numbers.');
+                } else if (userPart.length > 0 && userPart.length < 3) {
+                    setInvalid(target, 'fb_primary_email', 'Email username must be at least 3 characters before @gmail.com.');
+                } else if (!cleanMail.endsWith('@gmail.com')) {
+                    setInvalid(target, 'fb_primary_email', 'Security Policy: Only verified @gmail.com addresses are permitted. Disposable domains are blocked.');
+                } else {
+                    setValid(target, 'fb_primary_email', 'Verified @gmail.com Address Format');
+                }
+            }
+
+            // 4. EMERGENCY CONTACT PERSON (ALPHABETS ONLY)
+            else if (placeholder.includes('suresh kumar') || ariaLabel.includes('emergency contact person') || ariaLabel.includes('ತುರ್ತು ಸಂಪರ್ಕ ವ್ಯಕ್ತಿ')) {
+                if (!val || val.trim().length === 0) {
+                    removeFeedback(target, 'fb_emg_name');
+                    return;
+                }
+                if (/\d/.test(val)) {
+                    setInvalid(target, 'fb_emg_name', 'Emergency Contact Person must contain alphabetic letters and spaces only. Numbers are prohibited.');
+                } else if (/[^a-zA-Z\s\(\)\/\.\']/.test(val)) {
+                    setInvalid(target, 'fb_emg_name', 'Emergency Contact Person contains invalid special characters.');
+                } else if (val.trim().length < 3) {
+                    setInvalid(target, 'fb_emg_name', 'Emergency Contact Person name must be at least 3 characters.');
+                } else {
+                    setValid(target, 'fb_emg_name', 'Valid Emergency Contact Name');
+                }
+            }
+
+            // 5. EMERGENCY CONTACT MOBILE (MUST DIFFER FROM PRIMARY)
+            else if (placeholder.includes('9448199999') || ariaLabel.includes('emergency contact mobile') || ariaLabel.includes('ತುರ್ತು ಸಂಪರ್ಕ ಮೊಬೈಲ್')) {
+                if (!val || val.trim().length === 0) {
+                    removeFeedback(target, 'fb_emg_mobile');
+                    return;
+                }
+                const cleanEmg = val.replace(/\D/g, '');
+                const allInputs = Array.from(document.querySelectorAll('input'));
+                const primInp = allInputs.find(i => (i.placeholder || '').includes('9845012345') || ((i.getAttribute('aria-label') || '').toLowerCase().includes('mobile contact') && !(i.getAttribute('aria-label') || '').toLowerCase().includes('emergency')));
+                const cleanPrim = primInp ? primInp.value.replace(/\D/g, '') : '';
+
+                if (cleanEmg.length === 10 && cleanPrim.length === 10 && cleanEmg === cleanPrim) {
+                    setInvalid(target, 'fb_emg_mobile', 'Security Flaw: Emergency mobile number cannot be identical to your primary contact number.');
+                } else if (cleanEmg.length > 0 && !['6', '7', '8', '9'].includes(cleanEmg[0])) {
+                    setInvalid(target, 'fb_emg_mobile', 'Emergency mobile must start with 6, 7, 8, or 9.');
+                } else if (cleanEmg.length !== 10) {
+                    setInvalid(target, 'fb_emg_mobile', `Emergency mobile must be exactly 10 digits (currently ${cleanEmg.length} digits).`);
+                } else {
+                    setValid(target, 'fb_emg_mobile', `Verified Emergency Mobile (+91 ${cleanEmg})`);
+                }
+            }
+
+            // 6. EMERGENCY CONTACT EMAIL (MUST DIFFER FROM PRIMARY & BE GMAIL)
+            else if (placeholder.includes('guardian@gmail.com') || ariaLabel.includes('emergency contact email') || ariaLabel.includes('ತುರ್ತು ಸಂಪರ್ಕ ಇಮೇಲ್')) {
+                if (!val || val.trim().length === 0) {
+                    removeFeedback(target, 'fb_emg_email');
+                    return;
+                }
+                const cleanEmgMail = val.trim().toLowerCase();
+                const emgUserPart = cleanEmgMail.split('@')[0];
+
+                const allInputs = Array.from(document.querySelectorAll('input'));
+                const primMailInp = allInputs.find(i => (i.placeholder || '').includes('ananya.rao@gmail.com') || ((i.getAttribute('aria-label') || '').toLowerCase().includes('email address') && !(i.getAttribute('aria-label') || '').toLowerCase().includes('emergency')));
+                const cleanPrimMail = primMailInp ? primMailInp.value.trim().toLowerCase() : '';
+
+                if (cleanEmgMail.length > 0 && cleanPrimMail.length > 0 && cleanEmgMail === cleanPrimMail) {
+                    setInvalid(target, 'fb_emg_email', 'Security Flaw: Emergency contact email cannot be identical to your primary email address.');
+                } else if (/^\d/.test(emgUserPart)) {
+                    setInvalid(target, 'fb_emg_email', `Emergency email username '${emgUserPart}' cannot start with numbers.`);
+                } else if (!cleanEmgMail.endsWith('@gmail.com')) {
+                    setInvalid(target, 'fb_emg_email', 'Emergency email must be a verified @gmail.com address for clinical report dispatch.');
+                } else {
+                    setValid(target, 'fb_emg_email', 'Verified Emergency Contact Email (Clinical Reports Dispatched Here)');
+                }
+            }
+
+            // 7. REAL-TIME PASSWORD MATCHING & COMPLEXITY FEEDBACK
+            else if (target.type === 'password') {
+                const pwdInputs = Array.from(document.querySelectorAll('input[type="password"]')).filter(i => {
+                    const pl = (i.placeholder || '').toLowerCase();
+                    const al = (i.getAttribute('aria-label') || '').toLowerCase();
+                    return pl.includes('medfuse') || pl.includes('password') || pl.includes('confirm') || al.includes('password');
+                });
+
+                if (pwdInputs.length >= 2) {
+                    const pw1 = pwdInputs[0];
+                    const pw2 = pwdInputs[1];
+                    const v1 = pw1.value;
+                    const v2 = pw2.value;
+
+                    if (v2.length > 0) {
+                        if (v1 !== v2) {
+                            setInvalid(pw2, 'fb_pw_match', 'Passwords do not match! Please enter identical passwords in both fields.');
+                        } else {
+                            const isLen = v1.length >= 8;
+                            const isUpp = /[A-Z]/.test(v1);
+                            const isLow = /[a-z]/.test(v1);
+                            const isNum = /[0-9]/.test(v1);
+                            const isSpe = /[^A-Za-z0-9]/.test(v1);
+                            if (isLen && isUpp && isLow && isNum && isSpe) {
+                                setValid(pw2, 'fb_pw_match', 'All password security criteria met & passwords match successfully!');
+                                setValid(pw1, 'fb_pw1_valid', 'Strong Password Verified');
+                            } else {
+                                setInvalid(pw2, 'fb_pw_match', 'Passwords match, but password complexity requirements are not yet complete.');
+                            }
+                        }
+                    } else {
+                        removeFeedback(pw2, 'fb_pw_match');
+                    }
+                }
+            }
+        }
+    })();
+</script>''', unsafe_allow_javascript=True)
+
         tab_signin, tab_signup = st.tabs([
             t.get("auth_signin_tab", "🔑 Sign In"),
             t.get("auth_signup_tab", "📝 Sign Up (Create Account)")
@@ -499,10 +691,10 @@ def render_auth_page():
                             📧 EMAIL OTP PASSWORD RECOVERY
                         </div>
                         <div style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin-top: 2px;">
-                            {t.get('auth_forgot_title', 'Reset Password via Verified @gmail.com')}
+                            {t.get('auth_forgot_title', 'Reset Patient Password')}
                         </div>
                         <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">
-                            {t.get('auth_forgot_desc', 'For clinical security compliance, OTP codes are dispatched exclusively to verified @gmail.com addresses. Temporary or disposable email domains are strictly prohibited.')}
+                            {t.get('auth_forgot_desc', 'Single-use identity verification code delivered to your registered email address.')}
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
@@ -557,31 +749,11 @@ def render_auth_page():
                                 st.rerun()
 
                 if st.session_state.get("pat_otp_sent"):
-                    if not st.session_state.get("pat_is_offline", False):
-                        st.success(f"📬 **Verification Code Dispatched:** An OTP has been sent from system sender (`th8295979@gmail.com`) to **`{st.session_state.get('pat_target_email')}`**. Please check your Gmail inbox.")
-                    else:
-                        pat_code = st.session_state.get('pat_email_otp', '')
-                        st.markdown(f'''
-                            <div style="background: #f0fdf4; border: 1px solid #86efac; border-left: 5px solid #16a34a; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px;">
-                                <div style="font-weight: 700; color: #15803d; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
-                                    <span>🌐</span> {t.get('offline_banner_title', 'OFFLINE / RURAL PHC EMERGENCY DISPATCH (Viva / Lab Mode)')}
-                                </div>
-                                <div style="font-size: 0.82rem; color: #166534; margin-top: 4px; line-height: 1.5;">
-                                    {t.get('offline_banner_desc', 'Internet / SMTP connection is unreachable (Offline Clinic / Demonstration Mode). For clinical continuity, your single-use verification code is:')}
-                                    <span style="display: inline-block; background: #ffffff; border: 1px dashed #16a34a; font-family: monospace; font-size: 1.25rem; font-weight: 800; color: #15803d; padding: 3px 12px; border-radius: 6px; margin: 4px 6px;">
-                                        {pat_code}
-                                    </span>
-                                </div>
-                                <div style="font-size: 0.74rem; color: #4b5563; margin-top: 4px;">
-                                    {t.get('offline_banner_tip', '💡 Enter this 6-digit code below to verify your identity and update password.')}
-                                </div>
-                            </div>
-                        ''', unsafe_allow_html=True)
+                    st.success(f"📬 **Verification Code Dispatched:** A single-use verification code has been dispatched to **`{st.session_state.get('pat_target_email')}`**. Please check your inbox.")
 
                 entered_otp = st.text_input(
                     t.get("auth_enter_otp_label", "Enter 6-Digit Email OTP:"),
-                    value=st.session_state.get("pat_email_otp", "") if st.session_state.get("pat_is_offline", False) else "",
-                    placeholder=t.get("otp_input_placeholder", "Enter code received in your Gmail"),
+                    placeholder=t.get("otp_input_placeholder", "Enter 6-digit verification code"),
                     key="recov_pat_otp_input"
                 ).strip()
 
