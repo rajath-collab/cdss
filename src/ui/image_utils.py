@@ -48,45 +48,55 @@ def get_real_sample_xray(condition="pneumonia"):
     return Image.new("RGB", (420, 420), color=(20, 24, 32))
 
 
-def get_lesion_localization_details(condition="pneumonia"):
+def get_lesion_localization_details(condition="pneumonia", confidence: float = None, *args, **kwargs):
     """
     Returns patient-friendly and clinical anatomical localization details for the detected condition.
     Explains exactly where the lesion or consolidation is located.
+    Accepts arbitrary positional/keyword arguments for backward and forward compatibility.
     """
     cond = str(condition).lower()
     if "pneumonia" in cond or "consolidation" in cond or "opacity" in cond:
-        return {
+        data = {
             "zone_title": "Right Lower Lung Field (Basal Lobe)",
+            "location": "Right Lower Lung Field (Basal Lobe)",
             "anatomical_segment": "Right Hemithorax — Posterior Basal Segment (Segment 10)",
             "pathology_type": "Dense Alveolar Space Consolidation",
             "badge_color": "#dc2626",
             "coordinates": {"cx": 147, "cy": 243, "radius": 65},
             "patient_explanation_en": "The red/yellow glowing circle marks the exact focal area in the lower-right part of your lungs where inflammatory fluid (consolidation) has settled, causing cough and reduced oxygen exchange.",
             "patient_explanation_kn": "ಕೆಂಪು/ಹಳದಿ ಬಣ್ಣದ ಗುರುತು ನಿಮ್ಮ ಬಲ ಶ್ವಾಸಕೋಶದ ಕೆಳಭಾಗದಲ್ಲಿ (Right Lower Lobe) ದ್ರವ ಮತ್ತು ಕಫ ಶೇಖರಣೆಯಾಗಿರುವ ನಿರ್ದಿಷ್ಟ ಕೇಂದ್ರವನ್ನು (Consolidation) ನಿಖರವಾಗಿ ತೋರಿಸುತ್ತದೆ.",
-            "patient_explanation_hi": "लाल/पीला हाइलाइट किया गया क्षेत्र आपके दाहिने फेफड़े के निचले हिस्से (Right Lower Lobe) में संक्रमण और तरल संचय (Consolidation) का सटीक स्थान दर्शाता है।"
+            "patient_explanation_hi": "लाल/पीला हाइलाइट किया गया क्षेत्र आपके दाहिने फेफड़े के निचले हिस्से (Right Lower Lobe) में संक्रमण और तरल संचय (Consolidation) का सटीक स्थान दर्शाता है।",
+            "guidance": "Dense focal consolidation identified in Right Lower Lobe."
         }
     elif "tb" in cond or "tuberculosis" in cond:
-        return {
+        data = {
             "zone_title": "Right Upper Lung Zone (Apical Lobe)",
+            "location": "Right Upper Lung Zone (Apical Lobe)",
             "anatomical_segment": "Right Hemithorax — Apical/Posterior Segment (Segment 1/2)",
             "pathology_type": "Apical Cavitary Infiltration / Fibrocavitary Lesion",
             "badge_color": "#b91c1c",
             "coordinates": {"cx": 143, "cy": 118, "radius": 52},
             "patient_explanation_en": "The red focal indicator identifies a cavitary lesion in the upper apex of your right lung, characteristic of active mycobacterial infiltration.",
             "patient_explanation_kn": "ಕೆಂಪು ಬಣ್ಣದ ಗುರುತು ಬಲ ಶ್ವಾಸಕೋಶದ ಮೇಲ್ಭಾಗದಲ್ಲಿ (Apical Zone) ಕ್ಷಯರೋಗದ ಗಾಯವನ್ನು (Cavitary Lesion) ಸ್ಪಷ್ಟವಾಗಿ ಗುರುತಿಸುತ್ತದೆ.",
-            "patient_explanation_hi": "लाल संकेतक दाहिने फेफड़े के ऊपरी भाग (Apical Zone) में टीबी के घाव (Cavitary Lesion) के सटीक स्थान को दर्शाता है।"
+            "patient_explanation_hi": "लाल संकेतक दाहिने फेफड़े के ऊपरी भाग (Apical Zone) में टीबी के घाव (Cavitary Lesion) के सटीक स्थान को दर्शाता है।",
+            "guidance": "Apical cavitary infiltration identified in right upper lung zone."
         }
     else:
-        return {
+        data = {
             "zone_title": "Bilateral Clear Lung Parenchyma",
+            "location": "Bilateral Clear Lung Parenchyma",
             "anatomical_segment": "Both Left & Right Hemithoraces — Clear Costophrenic Angles",
             "pathology_type": "No Focal Consolidation or Infiltration Detected",
             "badge_color": "#16a34a",
             "coordinates": None,
             "patient_explanation_en": "Both lungs display clear, symmetric aeration with sharp margins and no abnormal focal consolidations or fluid deposits.",
             "patient_explanation_kn": "ಎರಡೂ ಶ್ವಾಸಕೋಶಗಳಲ್ಲಿ ಯಾವುದೇ ಅಸಹಜ ಕಲೆ ಅಥವಾ ದ್ರವ ಶೇಖರಣೆಯಿಲ್ಲ. ಶ್ವಾಸಕೋಶಗಳು ಸಾಮಾನ್ಯ ಮತ್ತು ಸ್ಪಷ್ಟವಾಗಿವೆ.",
-            "patient_explanation_hi": "दोनों फेफड़े पूरी तरह से स्पष्ट और सामान्य हैं। फेफड़ों में किसी भी प्रकार का तरल या संक्रमण नहीं पाया गया है।"
+            "patient_explanation_hi": "दोनों फेफड़े पूरी तरह से स्पष्ट और सामान्य हैं। फेफड़ों में किसी भी प्रकार का तरल या संक्रमण नहीं पाया गया है।",
+            "guidance": "Symmetric, clear lung aeration with sharp costophrenic angles."
         }
+    if confidence is not None:
+        data["confidence"] = confidence
+    return data
 
 
 def generate_gradcam_overlay(base_img=None, opacity=0.65, condition="pneumonia", annotate_pinpoint=True):

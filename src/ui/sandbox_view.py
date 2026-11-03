@@ -210,7 +210,17 @@ def render_direct_sandbox(app_mode: str = "Multimodal Ingestion"):
                 else:
                     # Run real ResNet-50 PyTorch inference
                     from src.vision.model import predict_xray
-                    p_class, p_conf = predict_xray(img_pil, model=model)
+                    v_res = predict_xray(model=model, image=img_pil)
+                    if isinstance(v_res, dict):
+                        p_class = v_res.get("predicted_class", "Normal")
+                        p_conf = float(v_res.get("confidence", 90.0))
+                    elif isinstance(v_res, (list, tuple)):
+                        p_class = str(v_res[0])
+                        p_conf = float(v_res[1])
+                    else:
+                        p_class = "Normal"
+                        p_conf = 90.0
+
                     st.session_state.sb_pred = p_class
                     st.session_state.sb_conf = p_conf * 100.0 if p_conf <= 1.0 else p_conf
             except Exception as e:
@@ -227,9 +237,20 @@ def render_direct_sandbox(app_mode: str = "Multimodal Ingestion"):
                 st.session_state.sb_has_pdf = True
 
                 parsed_bio = parse_clinical_biomarkers(raw_text)
+                # Safely extract biomarkers dictionary from parsed report
+                raw_bios = parsed_bio.get("biomarkers", {}) if isinstance(parsed_bio, dict) else {}
+                if not raw_bios and isinstance(parsed_bio, dict):
+                    raw_bios = {k: v for k, v in parsed_bio.items() if isinstance(v, dict)}
+
                 # Filter out metadata erroneously matched
-                ignore_meta = {'age', 'gender', 'date', 'pid', 'mrn', 'doctor', 'patient', 'name', 'sex', 'time'}
-                clean_bio = {k: v for k, v in parsed_bio.items() if not any(m in k.lower() or m in v.get("name", "").lower() for m in ignore_meta)}
+                ignore_meta = {'age', 'gender', 'date', 'pid', 'mrn', 'doctor', 'patient', 'name', 'sex', 'time', 'hospital', 'phone', 'male', 'female', 'collection'}
+                clean_bio = {}
+                for k, v in raw_bios.items():
+                    if isinstance(v, dict):
+                        name_str = v.get("name") or k
+                        if not any(ign in name_str.lower() or ign in k.lower() for ign in ignore_meta):
+                            clean_bio[k] = v
+
                 st.session_state.sb_biomarkers = clean_bio
                 st.success(f"✓ Parsed `{up_pdf.name}`: Extracted {len(clean_bio)} clinical biomarkers into RAG!")
             except Exception as e:
@@ -333,8 +354,8 @@ def render_direct_sandbox(app_mode: str = "Multimodal Ingestion"):
                     st.image(raw_xray, caption="Raw Radiograph Ingested", use_container_width=True)
 
                 loc_info = get_lesion_localization_details(pred, conf)
-                st.markdown(f"**📍 Exact Anatomical Focus:** `{loc_info.get('location', 'Thoracic Field')}`")
-                st.caption(loc_info.get('guidance', 'Neural activations localized based on feature saliency.'))
+                st.markdown(f"**📍 Exact Anatomical Focus:** `{loc_info.get('location') or loc_info.get('zone_title', 'Thoracic Field')}`")
+                st.caption(loc_info.get('guidance') or loc_info.get('patient_explanation_en', 'Neural activations localized based on feature saliency.'))
             else:
                 st.info("ℹ️ No radiograph uploaded. Laboratory-only triage running.")
 
@@ -343,11 +364,12 @@ def render_direct_sandbox(app_mode: str = "Multimodal Ingestion"):
             if biomarkers:
                 rows = []
                 for k, v in biomarkers.items():
-                    rows.append({
-                        "Biomarker": v.get("name", k.upper()),
-                        "Observed": f"{v.get('value')} {v.get('unit', '')}".strip(),
-                        "Clinical Status": v.get("status", "NORMAL")
-                    })
+                    if isinstance(v, dict):
+                        rows.append({
+                            "Biomarker": v.get("name", k.upper()),
+                            "Observed": f"{v.get('value')} {v.get('unit', '')}".strip(),
+                            "Clinical Status": v.get("status", "NORMAL")
+                        })
                 df_b = pd.DataFrame(rows)
                 st.dataframe(df_b, use_container_width=True, hide_index=True)
             else:
@@ -374,8 +396,8 @@ def render_direct_sandbox(app_mode: str = "Multimodal Ingestion"):
             sel_lang = lang_code_map.get(v_lang, "en")
 
         loc_detail = get_lesion_localization_details(pred, conf)
-        gradcam_focus = loc_detail.get("location", "bilateral lung parenchyma")
-        abnormal_bios = [f"{v.get('name', k)} ({v.get('value')})" for k, v in biomarkers.items() if str(v.get("status", "")).upper() not in ["NORMAL", "RECORDED"]]
+        gradcam_focus = loc_detail.get("location") or loc_detail.get("zone_title", "bilateral lung parenchyma")
+        abnormal_bios = [f"{v.get('name', k)} ({v.get('value')})" for k, v in biomarkers.items() if isinstance(v, dict) and str(v.get("status", "")).upper() not in ["NORMAL", "RECORDED"]]
 
         voice_script = generate_clinical_voice_script(
             patient_name="Sandbox Case",

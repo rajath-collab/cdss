@@ -99,16 +99,57 @@ def load_model(weights_path: str = None, device: str = None) -> CDSSVisionModel:
     return model
 
 
-def predict_xray(model: CDSSVisionModel, image: Image.Image, device: str = None):
+class CDSSPredictionResult(dict):
+    """
+    Polymorphic result object:
+    Acts as a dict: res['predicted_class'], res['confidence']
+    Can be unpacked as a 2-tuple: p_class, p_conf = predict_xray(...)
+    Can be indexed by int: res[0], res[1]
+    """
+    def __iter__(self):
+        return iter((self.get("predicted_class", "Normal"), self.get("confidence", 90.0)))
+    
+    def __getitem__(self, item):
+        if isinstance(item, int):
+            if item == 0:
+                return self.get("predicted_class", "Normal")
+            elif item == 1:
+                return self.get("confidence", 90.0)
+            elif item == 2:
+                return self.get("probabilities", {})
+        return super().__getitem__(item)
+
+
+def predict_xray(*args, **kwargs):
     """
     Runs end-to-end inference on a single chest X-ray.
+    Polymorphic signature accepts:
+      - predict_xray(model, image)
+      - predict_xray(image, model)
+      - predict_xray(model=model, image=image)
+      - predict_xray(image, model=model)
     Returns:
-      - predicted_class: str
-      - confidence: float (0.0 to 100.0)
-      - probabilities: dict of class -> score
-      - enhanced_image: PIL Image (after CLAHE)
-      - input_tensor: torch.Tensor (ready for Grad-CAM)
+      CDSSPredictionResult (dict & unpackable as (predicted_class, confidence))
     """
+    model = kwargs.get("model")
+    image = kwargs.get("image")
+    device = kwargs.get("device")
+
+    for a in args:
+        if isinstance(a, Image.Image):
+            image = a
+        elif hasattr(a, "eval") or hasattr(a, "forward") or isinstance(a, torch.nn.Module):
+            model = a
+        elif isinstance(a, str) and a in ("cuda", "cpu"):
+            device = a
+        elif isinstance(a, np.ndarray):
+            image = Image.fromarray(a)
+
+    if model is None:
+        model = load_model()
+    if image is None:
+        raise ValueError("predict_xray requires a valid PIL Image")
+
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         
@@ -126,11 +167,11 @@ def predict_xray(model: CDSSVisionModel, image: Image.Image, device: str = None)
     
     prob_dict = {model.classes[i]: float(probs[i] * 100.0) for i in range(len(model.classes))}
     
-    return {
+    return CDSSPredictionResult({
         "predicted_class": pred_class,
         "confidence": confidence,
         "class_index": pred_idx,
         "probabilities": prob_dict,
         "enhanced_image": enhanced_img,
         "input_tensor": input_tensor
-    }
+    })
