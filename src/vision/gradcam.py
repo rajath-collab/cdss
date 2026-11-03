@@ -1,7 +1,6 @@
 """
 Explainable AI (XAI): Gradient-weighted Class Activation Mapping (Grad-CAM)
 Part of Multimodal Fused Clinical Decision Support System (CDSS)
-VTU 5th Sem Mini Project - Dept. of CSE (Data Science)
 
 Reference:
 R. R. Selvaraju et al., "Grad-CAM: Visual Explanations from Deep Networks via

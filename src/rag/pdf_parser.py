@@ -1,7 +1,6 @@
 """
 Module 2: Pathology Report Parsing & Clinical Biomarker Extraction
 Part of Multimodal Fused Clinical Decision Support System (CDSS)
-VTU 5th Sem Mini Project - Dept. of CSE (Data Science)
 
 Reads BOTH PDF reports and direct TEXT inputs.
 Extracts clinical entities using Regex & Sentence-Transformers (all-MiniLM-L6-v2).

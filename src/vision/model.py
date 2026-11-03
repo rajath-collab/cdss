@@ -1,7 +1,6 @@
 """
 Module 1: Medical Vision & Radiography Preprocessing (ResNet-50)
 Part of Multimodal Fused Clinical Decision Support System (CDSS)
-VTU 5th Sem Mini Project - Dept. of CSE (Data Science)
 """
 
 import os

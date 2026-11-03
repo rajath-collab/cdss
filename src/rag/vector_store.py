@@ -1,7 +1,6 @@
 """
 Module 3: ChromaDB Vector Store & Grounded RAG Retrieval
 Part of Multimodal Fused Clinical Decision Support System (CDSS)
-VTU 5th Sem Mini Project - Dept. of CSE (Data Science)
 
 Features:
   - Local persistent ChromaDB vector store
