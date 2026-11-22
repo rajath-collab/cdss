@@ -915,26 +915,35 @@ class DenseNetGradCAM:
         self.target_layer = target_layer
         self.gradients = None
         self.activations = None
+        # Ensure in-place ReLUs do not corrupt backward autograd hooks
+        for m in self.model.modules():
+            if isinstance(m, nn.ReLU):
+                m.inplace = False
         self._register_hooks()
 
     def _register_hooks(self):
         def forward_hook(module, input, output):
-            self.activations = output
-
-        def backward_hook(module, grad_input, grad_output):
-            self.gradients = grad_output[0]
+            self.activations = output.detach().clone()
+            def backward_hook(grad):
+                self.gradients = grad.detach().clone()
+            output.register_hook(backward_hook)
 
         self.target_layer.register_forward_hook(forward_hook)
-        self.target_layer.register_full_backward_hook(backward_hook)
 
     def generate_heatmap(self, input_tensor: torch.Tensor, class_idx: int) -> np.ndarray:
         self.model.eval()
+        self.model.zero_grad()
+        self.gradients = None
+        self.activations = None
+        
         logits = self.model(input_tensor)
         score = logits[0, class_idx]
         
-        self.model.zero_grad()
         score.backward(retain_graph=True)
         
+        if self.gradients is None or self.activations is None:
+            raise RuntimeError("Failed to capture Grad-CAM gradients or activations.")
+            
         weights = torch.mean(self.gradients, dim=[2, 3], keepdim=True)
         cam = torch.sum(weights * self.activations, dim=1).squeeze()
         cam = F.relu(cam)
